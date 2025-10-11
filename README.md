@@ -1,8 +1,6 @@
 # DigiBuddy - Web-Based Digital Pet
 ## A nostalgic web-based digital pet game inspired by the classic 1990s virtual pets. Take care of your DigiBuddy as it grows from an egg to an adult!
 
-https://via.placeholder.com/500x300/6a11cb/ffffff?text=DigiBudty+Virtual+Pet
-
 # Features
 - 🥚 Life Stages: Watch your pet evolve through 4 stages: Egg → Baby → Teen → Adult
 
