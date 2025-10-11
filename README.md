@@ -118,6 +118,15 @@ digibuddy/
 
 - Test in browser
 
+# Original vs Web Version:
+| Original      | Web DigiBuddy |
+|-----------|---------|
+| Runs when off	✅ Yes (battery)	 |❌ No |
+| Real-time aging	✅ Continuous |❌ Only when browser open |
+| Persistent	✅ Always alive	|✅ State saved, but paused |
+| Requires attention	✅ Every few hours	|✅ Only during browser sessions |
+
+
 # Contributing
 - Feel free to fork this project and submit pull requests for:
 
