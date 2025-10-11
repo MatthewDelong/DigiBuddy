@@ -118,6 +118,11 @@ digibuddy/
 
 - Test in browser
 
+# Screenshot
+| Enjoy     | DigiBuddy |
+|-----------|---------|
+| Home      | ![Screenshot_11-10-2025_10955_digibuddy2025 netlify app](https://github.com/user-attachments/assets/229cc1ea-4d74-44af-beeb-1984b4f54a4f) |
+
 # Original vs Web Version:
 | Original      | Web DigiBuddy |
 |-----------|---------|
