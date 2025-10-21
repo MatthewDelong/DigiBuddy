@@ -13,7 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 public class PetService extends Service {
-    private static final long UPDATE_INTERVAL = 60000; // 1 minute
+    private static final long UPDATE_INTERVAL = 60000;
     private static final int NOTIFICATION_ID = 1;
     private static final String CHANNEL_ID = "pet_service_channel";
 
@@ -31,7 +31,6 @@ public class PetService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Start as foreground service
         startForegroundService();
         startPetUpdates();
         return START_STICKY;
@@ -60,7 +59,6 @@ public class PetService extends Service {
     }
 
     private Notification createNotification() {
-        // Update notification with current pet status
         Pet currentPet = petPreferences.loadPet();
         String notificationText;
 
@@ -101,46 +99,56 @@ public class PetService extends Service {
             return;
         }
 
-        // Calculate time passed since last update (in minutes)
-        long timePassed = System.currentTimeMillis() - pet.getLastUpdate();
-        long minutesPassed = timePassed / (1000 * 60);
+        // Check if this is a fresh pet (all stats at starting values)
+        boolean isFreshPet = pet.getHunger() == 100 &&
+                pet.getHappiness() == 100 &&
+                pet.getEnergy() == 100 &&
+                pet.getAge() == 0 &&
+                pet.getCleanliness() == 100;
 
-        if (minutesPassed > 0) {
-            // Apply stat changes based on time passed
-            double hungerLoss = minutesPassed * 0.1;
-            double happinessLoss = minutesPassed * 0.05;
-            double energyLoss = minutesPassed * 0.05;
-            double cleanlinessLoss = minutesPassed * 0.02;
-            double ageGain = minutesPassed * 0.001;
+        // Only apply degradation if this is NOT a fresh pet
+        if (!isFreshPet) {
+            // Calculate time passed since last update (in minutes)
+            long timePassed = System.currentTimeMillis() - pet.getLastUpdate();
+            long minutesPassed = timePassed / (1000 * 60);
 
-            // If sleeping, apply sleep benefits
-            if (pet.isSleeping()) {
-                // While sleeping: energy restores, other stats decrease slower
-                double energyGain = minutesPassed * 0.5;
-                pet.setEnergy(Math.min(100, pet.getEnergy() + energyGain));
-                hungerLoss *= 0.3; // Hunger decreases much slower while sleeping
-                happinessLoss *= 0.5; // Happiness decreases slower while sleeping
-                cleanlinessLoss *= 0.5; // Cleanliness decreases slower while sleeping
-                energyLoss = 0; // No energy loss while sleeping
+            if (minutesPassed > 0) {
+                // Apply stat changes based on time passed
+                double hungerLoss = minutesPassed * 0.1;
+                double happinessLoss = minutesPassed * 0.05;
+                double energyLoss = minutesPassed * 0.05;
+                double cleanlinessLoss = minutesPassed * 0.02;
+                double ageGain = minutesPassed * 0.001;
+
+                // If sleeping, apply sleep benefits
+                if (pet.isSleeping()) {
+                    // While sleeping: energy restores, other stats decrease slower
+                    double energyGain = minutesPassed * 0.5;
+                    pet.setEnergy(Math.min(100, pet.getEnergy() + energyGain));
+                    hungerLoss *= 0.3;
+                    happinessLoss *= 0.5;
+                    cleanlinessLoss *= 0.5;
+                    energyLoss = 0;
+                }
+
+                // Apply stat changes
+                pet.setHunger(Math.max(0, pet.getHunger() - hungerLoss));
+                pet.setHappiness(Math.max(0, pet.getHappiness() - happinessLoss));
+                pet.setEnergy(Math.max(0, pet.getEnergy() - energyLoss));
+                pet.setCleanliness(Math.max(0, pet.getCleanliness() - cleanlinessLoss));
+                pet.setAge(pet.getAge() + ageGain);
+
+                // Update pet stage and check for death
+                pet.updateStage();
+                pet.checkDeath();
+
+                // Save updated pet state
+                pet.setLastUpdate(System.currentTimeMillis());
+                petPreferences.savePet(pet);
+
+                // Update notification with new status
+                updateNotification();
             }
-
-            // Apply stat changes
-            pet.setHunger(Math.max(0, pet.getHunger() - hungerLoss));
-            pet.setHappiness(Math.max(0, pet.getHappiness() - happinessLoss));
-            pet.setEnergy(Math.max(0, pet.getEnergy() - energyLoss));
-            pet.setCleanliness(Math.max(0, pet.getCleanliness() - cleanlinessLoss));
-            pet.setAge(pet.getAge() + ageGain);
-
-            // Update pet stage and check for death
-            pet.updateStage();
-            pet.checkDeath();
-
-            // Save updated pet state
-            pet.setLastUpdate(System.currentTimeMillis());
-            petPreferences.savePet(pet);
-
-            // Update notification with new status
-            updateNotification();
         }
     }
 

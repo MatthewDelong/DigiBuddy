@@ -143,29 +143,28 @@ public class MainActivity extends AppCompatActivity {
                     android.Manifest.permission.POST_NOTIFICATIONS) !=
                     PackageManager.PERMISSION_GRANTED) {
 
-                // Show explanation before requesting
                 new AlertDialog.Builder(this)
                         .setTitle("Notification Permission Needed")
                         .setMessage("DigiBuddy needs notification permission to show pet status updates and reminders. This helps you take better care of your pet!")
                         .setPositiveButton("Allow", (dialog, which) -> {
-                            // Request the permission
                             ActivityCompat.requestPermissions(this,
                                     new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
                                     PERMISSION_REQUEST_CODE);
                         })
                         .setNegativeButton("Deny", (dialog, which) -> {
                             Toast.makeText(this, "Notifications disabled. You can enable them in Settings later.", Toast.LENGTH_LONG).show();
-                            startPetService(); // Start service even without permission
+                            // Delay service start to ensure pet is saved first
+                            new Handler().postDelayed(() -> startPetService(), 1000);
                         })
                         .setCancelable(false)
                         .show();
             } else {
-                // Permission already granted
-                startPetService();
+                // Delay service start to ensure pet is saved first
+                new Handler().postDelayed(() -> startPetService(), 1000);
             }
         } else {
-            // Below Android 13, no permission needed
-            startPetService();
+            // Delay service start to ensure pet is saved first
+            new Handler().postDelayed(() -> startPetService(), 1000);
         }
     }
 
