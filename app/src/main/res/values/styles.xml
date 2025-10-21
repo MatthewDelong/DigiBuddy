@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme - No Action Bar -->
+    <style name="Theme.DigiBuddy" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorPrimaryVariant">@color/purple_700</item>
+        <item name="colorOnPrimary">@color/white</item>
+
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/teal_200</item>
+        <item name="colorSecondaryVariant">@color/teal_700</item>
+        <item name="colorOnSecondary">@color/black</item>
+
+        <!-- Fullscreen settings -->
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+
+        <!-- Customize your theme here. -->
+        <item name="android:windowBackground">@drawable/background_gradient</item>
+        <item name="android:navigationBarColor">@color/purple_700</item>
+    </style>
+
+    <!-- Button style -->
+    <style name="DigiBuddyButton" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/button_background</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:padding">12dp</item>
+    </style>
+
+    <!-- Progress bar style -->
+    <style name="DigiBuddyProgressBar" parent="Widget.AppCompat.ProgressBar.Horizontal">
+        <item name="android:progressDrawable">@drawable/progress_bar_horizontal</item>
+        <item name="android:minHeight">12dp</item>
+        <item name="android:maxHeight">12dp</item>
+    </style>
+
+    <!-- Text view style for stats -->
+    <style name="DigiBuddyStatText">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/brown</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Message box style -->
+    <style name="DigiBuddyMessageBox">
+        <item name="android:background">@drawable/message_box</item>
+        <item name="android:padding">12dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/brown</item>
+        <item name="android:gravity">center</item>
+    </style>
+</resources>
