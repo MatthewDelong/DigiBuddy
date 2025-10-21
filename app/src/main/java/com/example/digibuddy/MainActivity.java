@@ -1,6 +1,8 @@
 package com.example.digibuddy;
 
 import android.app.AlertDialog;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.widget.Button;
@@ -9,10 +11,13 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 public class MainActivity extends AppCompatActivity {
     private Pet pet;
     private PetPreferences petPreferences;
+    private static final int PERMISSION_REQUEST_CODE = 100;
 
     private ImageView petImage;
     private ProgressBar hungerBar, happinessBar, energyBar, ageBar;
@@ -33,7 +38,9 @@ public class MainActivity extends AppCompatActivity {
 
         setupButtons();
         startUIUpdates();
-        startPetService();
+
+        // Request notification permission first, then start service
+        requestNotificationPermission();
     }
 
     private void initializeViews() {
@@ -69,6 +76,7 @@ public class MainActivity extends AppCompatActivity {
             double happinessLoss = minutesPassed * 0.05;
             double energyLoss = minutesPassed * 0.05;
             double ageGain = minutesPassed * 0.001;
+            double cleanlinessLoss = minutesPassed * 0.02;
 
             // If sleeping, apply sleep benefits
             if (pet.isSleeping()) {
@@ -77,12 +85,14 @@ public class MainActivity extends AppCompatActivity {
                 pet.setEnergy(Math.min(100, pet.getEnergy() + energyGain));
                 hungerLoss *= 0.3; // Hunger decreases much slower while sleeping
                 happinessLoss *= 0.5; // Happiness decreases slower while sleeping
+                cleanlinessLoss *= 0.5; // Cleanliness decreases slower while sleeping
                 energyLoss = 0; // No energy loss while sleeping
             }
 
             pet.setHunger(Math.max(0, pet.getHunger() - hungerLoss));
             pet.setHappiness(Math.max(0, pet.getHappiness() - happinessLoss));
             pet.setEnergy(Math.max(0, pet.getEnergy() - energyLoss));
+            pet.setCleanliness(Math.max(0, pet.getCleanliness() - cleanlinessLoss));
             pet.setAge(pet.getAge() + ageGain);
 
             pet.updateStage();
@@ -111,9 +121,60 @@ public class MainActivity extends AppCompatActivity {
         resetButton.setOnClickListener(v -> resetPet());
     }
 
+    private void requestNotificationPermission() {
+        // Only required for Android 13 (API 33) and above
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this,
+                    android.Manifest.permission.POST_NOTIFICATIONS) !=
+                    PackageManager.PERMISSION_GRANTED) {
+
+                // Show explanation before requesting
+                new AlertDialog.Builder(this)
+                        .setTitle("Notification Permission Needed")
+                        .setMessage("DigiBuddy needs notification permission to show pet status updates and reminders. This helps you take better care of your pet!")
+                        .setPositiveButton("Allow", (dialog, which) -> {
+                            // Request the permission
+                            ActivityCompat.requestPermissions(this,
+                                    new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                                    PERMISSION_REQUEST_CODE);
+                        })
+                        .setNegativeButton("Deny", (dialog, which) -> {
+                            Toast.makeText(this, "Notifications disabled. You can enable them in Settings later.", Toast.LENGTH_LONG).show();
+                            startPetService(); // Start service even without permission
+                        })
+                        .setCancelable(false)
+                        .show();
+            } else {
+                // Permission already granted
+                startPetService();
+            }
+        } else {
+            // Below Android 13, no permission needed
+            startPetService();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Notification permission granted! You'll get pet updates.", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Notification permission denied. You can enable it in App Settings.", Toast.LENGTH_LONG).show();
+            }
+            // Start service regardless of permission result
+            startPetService();
+        }
+    }
+
     private void startPetService() {
         android.content.Intent serviceIntent = new android.content.Intent(this, PetService.class);
-        startService(serviceIntent);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
     }
 
     private void stopPetService() {
@@ -132,8 +193,9 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        pet.setHunger(pet.getHunger() + 25);
-        pet.setHappiness(pet.getHappiness() + 5);
+        pet.setHunger(Math.min(100, pet.getHunger() + 25));
+        pet.setHappiness(Math.min(100, pet.getHappiness() + 5));
+        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 5)); // Feeding makes pet a bit messy
         saveAndUpdate();
         showMessage("Yum! Your DigiBuddy enjoyed the meal!");
     }
@@ -154,9 +216,10 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        pet.setHappiness(pet.getHappiness() + 15);
-        pet.setEnergy(pet.getEnergy() - 8);
-        pet.setHunger(pet.getHunger() - 3);
+        pet.setHappiness(Math.min(100, pet.getHappiness() + 15));
+        pet.setEnergy(Math.max(0, pet.getEnergy() - 8));
+        pet.setHunger(Math.max(0, pet.getHunger() - 3));
+        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 3)); // Playing makes pet messy
         saveAndUpdate();
         showMessage("Your DigiBuddy had fun playing!");
     }
@@ -191,7 +254,8 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        pet.setHappiness(pet.getHappiness() + 10);
+        pet.setCleanliness(100);
+        pet.setHappiness(Math.min(100, pet.getHappiness() + 10));
         saveAndUpdate();
         showMessage("Your DigiBuddy feels fresh and clean!");
     }
@@ -223,12 +287,12 @@ public class MainActivity extends AppCompatActivity {
         hungerBar.setProgress((int) pet.getHunger());
         happinessBar.setProgress((int) pet.getHappiness());
         energyBar.setProgress((int) pet.getEnergy());
-        ageBar.setProgress((int) Math.min(100, pet.getAge() * 6.67));
+        ageBar.setProgress((int) Math.min(100, pet.getAge() * 14.28)); // Adjusted for 0-7 age range
 
         hungerText.setText(String.valueOf((int) pet.getHunger()));
         happinessText.setText(String.valueOf((int) pet.getHappiness()));
         energyText.setText(String.valueOf((int) pet.getEnergy()));
-        ageText.setText(String.valueOf((int) pet.getAge()));
+        ageText.setText(String.format("%.1f", pet.getAge()));
 
         updatePetImage();
         updateButtonStates();
@@ -249,6 +313,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (!pet.isAlive()) {
             petImage.setAlpha(0.5f);
+            showMessage("Your DigiBuddy has passed away... Reset to start over.");
         } else if (pet.isSleeping()) {
             petImage.setAlpha(0.7f);
         } else {
@@ -258,10 +323,13 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateButtonStates() {
         boolean isAlive = pet.isAlive();
-        feedButton.setEnabled(isAlive);
-        playButton.setEnabled(isAlive);
+        boolean isSleeping = pet.isSleeping();
+
+        feedButton.setEnabled(isAlive && !isSleeping);
+        playButton.setEnabled(isAlive && !isSleeping && pet.getEnergy() >= 20);
         sleepButton.setEnabled(isAlive);
-        cleanButton.setEnabled(isAlive);
+        cleanButton.setEnabled(isAlive && !isSleeping);
+        resetButton.setEnabled(true); // Always enabled
     }
 
     private void showMessage(String message) {
@@ -280,11 +348,13 @@ public class MainActivity extends AppCompatActivity {
                         pet.setEnergy(Math.min(100, pet.getEnergy() + 0.3));
                         pet.setHunger(Math.max(0, pet.getHunger() - 0.03));
                         pet.setHappiness(Math.max(0, pet.getHappiness() - 0.02));
+                        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.01));
                     } else {
                         // While awake: normal stat decay
                         pet.setHunger(Math.max(0, pet.getHunger() - 0.1));
                         pet.setHappiness(Math.max(0, pet.getHappiness() - 0.05));
                         pet.setEnergy(Math.max(0, pet.getEnergy() - 0.05));
+                        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.02));
                     }
 
                     pet.setAge(pet.getAge() + 0.001);
