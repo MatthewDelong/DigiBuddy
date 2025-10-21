@@ -36,7 +36,8 @@ public class PetPreferences {
     }
 
     public Pet loadPet() {
-        if (!sharedPreferences.contains(KEY_HUNGER)) {
+        // Better way to check for fresh install
+        if (sharedPreferences.getAll().size() == 0) {
             return new Pet();
         }
 
