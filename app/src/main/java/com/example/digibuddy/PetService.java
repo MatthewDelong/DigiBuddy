@@ -15,18 +15,22 @@ import androidx.core.app.NotificationCompat;
 public class PetService extends Service {
     private static final long UPDATE_INTERVAL = 60000;
     private static final int NOTIFICATION_ID = 1;
+    private static final int ALERT_NOTIFICATION_ID = 2; // Separate ID for alerts
     private static final String CHANNEL_ID = "pet_service_channel";
+    private static final String ALERT_CHANNEL_ID = "pet_alert_channel";
 
     private Handler handler;
     private Runnable updateRunnable;
     private PetPreferences petPreferences;
+    private NotificationManager notificationManager;
 
     @Override
     public void onCreate() {
         super.onCreate();
         handler = new Handler();
         petPreferences = new PetPreferences(this);
-        createNotificationChannel();
+        notificationManager = getSystemService(NotificationManager.class);
+        createNotificationChannels();
     }
 
     @Override
@@ -45,16 +49,28 @@ public class PetService extends Service {
         }
     }
 
-    private void createNotificationChannel() {
+    private void createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Main service channel
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
                     "Pet Service Channel",
                     NotificationManager.IMPORTANCE_LOW
             );
             channel.setDescription("Channel for pet status updates");
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            manager.createNotificationChannel(channel);
+
+            // Alert channel (for low stat warnings)
+            NotificationChannel alertChannel = new NotificationChannel(
+                    ALERT_CHANNEL_ID,
+                    "Pet Alert Channel",
+                    NotificationManager.IMPORTANCE_HIGH // High importance for alerts
+            );
+            alertChannel.setDescription("Channel for pet emergency alerts");
+            alertChannel.enableVibration(true);
+            alertChannel.setImportance(NotificationManager.IMPORTANCE_HIGH);
+
+            notificationManager.createNotificationChannel(channel);
+            notificationManager.createNotificationChannel(alertChannel);
         }
     }
 
@@ -85,6 +101,7 @@ public class PetService extends Service {
             @Override
             public void run() {
                 updatePetStats();
+                checkLowStatsAndNotify();
                 handler.postDelayed(this, UPDATE_INTERVAL);
             }
         };
@@ -152,10 +169,56 @@ public class PetService extends Service {
         }
     }
 
+    private void checkLowStatsAndNotify() {
+        Pet pet = petPreferences.loadPet();
+
+        if (!pet.isAlive()) {
+            return;
+        }
+
+        // Check for low stats (below 10%)
+        if (pet.getHunger() <= 10) {
+            sendAlertNotification("Hunger Alert!", "Your DigiBuddy is very hungry! Feed it soon!");
+        }
+
+        if (pet.getHappiness() <= 10) {
+            sendAlertNotification("Happiness Alert!", "Your DigiBuddy is very sad! Play with it!");
+        }
+
+        if (pet.getEnergy() <= 10) {
+            sendAlertNotification("Energy Alert!", "Your DigiBuddy is very tired! Let it sleep!");
+        }
+
+        if (pet.getCleanliness() <= 10) {
+            sendAlertNotification("Cleanliness Alert!", "Your DigiBuddy is very dirty! Clean it!");
+        }
+
+        // Critical alerts (below 5%)
+        if (pet.getHunger() <= 5) {
+            sendAlertNotification("CRITICAL: Hunger Emergency!", "Your DigiBuddy is starving! Feed it immediately!");
+        }
+
+        if (pet.getHappiness() <= 5) {
+            sendAlertNotification("CRITICAL: Happiness Emergency!", "Your DigiBuddy is extremely sad! It needs attention!");
+        }
+    }
+
+    private void sendAlertNotification(String title, String message) {
+        Notification alertNotification = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true) // Allows user to dismiss
+                .setDefaults(Notification.DEFAULT_ALL) // Sound, vibration, etc.
+                .build();
+
+        notificationManager.notify(ALERT_NOTIFICATION_ID, alertNotification);
+    }
+
     private void updateNotification() {
         Notification notification = createNotification();
-        NotificationManager manager = getSystemService(NotificationManager.class);
-        manager.notify(NOTIFICATION_ID, notification);
+        notificationManager.notify(NOTIFICATION_ID, notification);
     }
 
     @Override
@@ -164,6 +227,8 @@ public class PetService extends Service {
         if (handler != null && updateRunnable != null) {
             handler.removeCallbacks(updateRunnable);
         }
+        // Cancel all notifications when service stops
+        notificationManager.cancelAll();
     }
 
     @Nullable

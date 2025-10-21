@@ -239,7 +239,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void toggleSleep() {
-        if (!pet.isAlive()) return;
+        if (!pet.isAlive()) {
+            showMessage("Your DigiBuddy has passed away...");
+            return;
+        }
 
         pet.setSleeping(!pet.isSleeping());
         saveAndUpdate();
@@ -261,7 +264,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void cleanPet() {
-        if (!pet.isAlive()) return;
+        if (!pet.isAlive()) {
+            showMessage("Your DigiBuddy has passed away...");
+            return;
+        }
 
         if (pet.isSleeping()) {
             showMessage("Your DigiBuddy is sleeping! Wait for it to wake up.");
