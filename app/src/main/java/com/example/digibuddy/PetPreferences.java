@@ -36,9 +36,12 @@ public class PetPreferences {
     }
 
     public Pet loadPet() {
-        // Better way to check for fresh install
+        // Check for fresh install
         if (sharedPreferences.getAll().size() == 0) {
-            return new Pet();
+            Pet freshPet = new Pet();
+            // Reset lastUpdate to current time for fresh installs
+            freshPet.setLastUpdate(System.currentTimeMillis());
+            return freshPet;
         }
 
         Pet pet = new Pet();
