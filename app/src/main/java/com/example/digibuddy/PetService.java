@@ -15,8 +15,6 @@ import androidx.core.app.NotificationCompat;
 public class PetService extends Service {
     private static final long UPDATE_INTERVAL = 60000;
     private static final int NOTIFICATION_ID = 1;
-    private static final int ALERT_NOTIFICATION_ID = 2; // Separate ID for alerts
-    private static final String CHANNEL_ID = "pet_service_channel";
     private static final String ALERT_CHANNEL_ID = "pet_alert_channel";
 
     private Handler handler;
@@ -30,70 +28,30 @@ public class PetService extends Service {
         handler = new Handler();
         petPreferences = new PetPreferences(this);
         notificationManager = getSystemService(NotificationManager.class);
-        createNotificationChannels();
+        createNotificationChannel();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        startForegroundService();
+        // Remove the foreground service - no ongoing notification
         startPetUpdates();
         return START_STICKY;
     }
 
-    private void startForegroundService() {
-        Notification notification = createNotification();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
-        } else {
-            startForeground(NOTIFICATION_ID, notification);
-        }
-    }
-
-    private void createNotificationChannels() {
+    private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Main service channel
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID,
-                    "Pet Service Channel",
-                    NotificationManager.IMPORTANCE_LOW
-            );
-            channel.setDescription("Channel for pet status updates");
-
-            // Alert channel (for low stat warnings)
+            // Only create alert channel for low stat warnings
             NotificationChannel alertChannel = new NotificationChannel(
                     ALERT_CHANNEL_ID,
                     "Pet Alert Channel",
-                    NotificationManager.IMPORTANCE_HIGH // High importance for alerts
+                    NotificationManager.IMPORTANCE_HIGH
             );
             alertChannel.setDescription("Channel for pet emergency alerts");
             alertChannel.enableVibration(true);
             alertChannel.setImportance(NotificationManager.IMPORTANCE_HIGH);
 
-            notificationManager.createNotificationChannel(channel);
             notificationManager.createNotificationChannel(alertChannel);
         }
-    }
-
-    private Notification createNotification() {
-        Pet currentPet = petPreferences.loadPet();
-        String notificationText;
-
-        if (!currentPet.isAlive()) {
-            notificationText = "Your DigiBuddy has passed away";
-        } else if (currentPet.isSleeping()) {
-            notificationText = "Your DigiBuddy is sleeping... Zzz";
-        } else {
-            notificationText = "Your DigiBuddy is being cared for";
-        }
-
-        return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("DigiBuddy")
-                .setContentText(notificationText)
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setOngoing(true)
-                .setOnlyAlertOnce(true)
-                .build();
     }
 
     private void startPetUpdates() {
@@ -162,9 +120,6 @@ public class PetService extends Service {
                 // Save updated pet state
                 pet.setLastUpdate(System.currentTimeMillis());
                 petPreferences.savePet(pet);
-
-                // Update notification with new status
-                updateNotification();
             }
         }
     }
@@ -176,7 +131,7 @@ public class PetService extends Service {
             return;
         }
 
-        // Check for low stats (below 10%)
+        // Check for low stats (below 10%) - ONLY show notifications for these
         if (pet.getHunger() <= 10) {
             sendAlertNotification("Hunger Alert!", "Your DigiBuddy is very hungry! Feed it soon!");
         }
@@ -213,12 +168,7 @@ public class PetService extends Service {
                 .setDefaults(Notification.DEFAULT_ALL) // Sound, vibration, etc.
                 .build();
 
-        notificationManager.notify(ALERT_NOTIFICATION_ID, alertNotification);
-    }
-
-    private void updateNotification() {
-        Notification notification = createNotification();
-        notificationManager.notify(NOTIFICATION_ID, notification);
+        notificationManager.notify((int) System.currentTimeMillis(), alertNotification); // Unique ID for each alert
     }
 
     @Override
@@ -227,8 +177,6 @@ public class PetService extends Service {
         if (handler != null && updateRunnable != null) {
             handler.removeCallbacks(updateRunnable);
         }
-        // Cancel all notifications when service stops
-        notificationManager.cancelAll();
     }
 
     @Nullable
