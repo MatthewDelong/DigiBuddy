@@ -70,8 +70,18 @@ public class MainActivity extends AppCompatActivity {
         long timePassed = System.currentTimeMillis() - pet.getLastUpdate();
         long minutesPassed = timePassed / (1000 * 60);
 
-        // Apply background degradation if significant time passed
-        if (minutesPassed > 1 && pet.isAlive()) {
+        // Check if this is a fresh pet (all stats at starting values)
+        boolean isFreshPet = pet.getHunger() == 100 &&
+                pet.getHappiness() == 100 &&
+                pet.getEnergy() == 100 &&
+                pet.getAge() == 0 &&
+                pet.getCleanliness() == 100;
+
+        // Apply background degradation ONLY if:
+        // 1. More than 1 minute has passed AND
+        // 2. Pet is alive AND
+        // 3. This is NOT a fresh pet
+        if (minutesPassed > 1 && pet.isAlive() && !isFreshPet) {
             double hungerLoss = minutesPassed * 0.1;
             double happinessLoss = minutesPassed * 0.05;
             double energyLoss = minutesPassed * 0.05;
@@ -107,6 +117,11 @@ public class MainActivity extends AppCompatActivity {
                     showMessage("Welcome back! Your DigiBuddy missed you!");
                 }
             }
+        }
+        // If it's a fresh pet, update the lastUpdate time to prevent immediate degradation
+        else if (isFreshPet) {
+            pet.setLastUpdate(System.currentTimeMillis());
+            petPreferences.savePet(pet);
         }
 
         updateUI();
