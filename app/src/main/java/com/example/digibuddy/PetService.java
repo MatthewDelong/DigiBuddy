@@ -15,6 +15,7 @@ import androidx.core.app.NotificationCompat;
 public class PetService extends Service {
     private static final long UPDATE_INTERVAL = 60000;
     private static final int NOTIFICATION_ID = 1;
+    private static final String CHANNEL_ID = "pet_service_channel";
     private static final String ALERT_CHANNEL_ID = "pet_alert_channel";
 
     private Handler handler;
@@ -28,19 +29,37 @@ public class PetService extends Service {
         handler = new Handler();
         petPreferences = new PetPreferences(this);
         notificationManager = getSystemService(NotificationManager.class);
-        createNotificationChannel();
+        createNotificationChannels();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Remove the foreground service - no ongoing notification
+        startForegroundService();
         startPetUpdates();
         return START_STICKY;
     }
 
-    private void createNotificationChannel() {
+    private void startForegroundService() {
+        Notification notification = createNotification();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        } else {
+            startForeground(NOTIFICATION_ID, notification);
+        }
+    }
+
+    private void createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Only create alert channel for low stat warnings
+            // Main service channel (low priority)
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID,
+                    "Pet Service Channel",
+                    NotificationManager.IMPORTANCE_LOW
+            );
+            channel.setDescription("Channel for pet service");
+            channel.setShowBadge(false);
+
+            // Alert channel (high priority for low stats)
             NotificationChannel alertChannel = new NotificationChannel(
                     ALERT_CHANNEL_ID,
                     "Pet Alert Channel",
@@ -48,10 +67,22 @@ public class PetService extends Service {
             );
             alertChannel.setDescription("Channel for pet emergency alerts");
             alertChannel.enableVibration(true);
-            alertChannel.setImportance(NotificationManager.IMPORTANCE_HIGH);
 
+            notificationManager.createNotificationChannel(channel);
             notificationManager.createNotificationChannel(alertChannel);
         }
+    }
+
+    private Notification createNotification() {
+        return new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("DigiBuddy")
+                .setContentText("Monitoring your pet's stats")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setSilent(true)
+                .build();
     }
 
     private void startPetUpdates() {
@@ -132,28 +163,28 @@ public class PetService extends Service {
         }
 
         // Check for low stats (below 10%) - ONLY show notifications for these
-        if (pet.getHunger() <= 10) {
+        if (pet.getHunger() <= 10 && pet.getHunger() > 0) {
             sendAlertNotification("Hunger Alert!", "Your DigiBuddy is very hungry! Feed it soon!");
         }
 
-        if (pet.getHappiness() <= 10) {
+        if (pet.getHappiness() <= 10 && pet.getHappiness() > 0) {
             sendAlertNotification("Happiness Alert!", "Your DigiBuddy is very sad! Play with it!");
         }
 
-        if (pet.getEnergy() <= 10) {
+        if (pet.getEnergy() <= 10 && pet.getEnergy() > 0) {
             sendAlertNotification("Energy Alert!", "Your DigiBuddy is very tired! Let it sleep!");
         }
 
-        if (pet.getCleanliness() <= 10) {
+        if (pet.getCleanliness() <= 10 && pet.getCleanliness() > 0) {
             sendAlertNotification("Cleanliness Alert!", "Your DigiBuddy is very dirty! Clean it!");
         }
 
         // Critical alerts (below 5%)
-        if (pet.getHunger() <= 5) {
+        if (pet.getHunger() <= 5 && pet.getHunger() > 0) {
             sendAlertNotification("CRITICAL: Hunger Emergency!", "Your DigiBuddy is starving! Feed it immediately!");
         }
 
-        if (pet.getHappiness() <= 5) {
+        if (pet.getHappiness() <= 5 && pet.getHappiness() > 0) {
             sendAlertNotification("CRITICAL: Happiness Emergency!", "Your DigiBuddy is extremely sad! It needs attention!");
         }
     }
@@ -164,11 +195,11 @@ public class PetService extends Service {
                 .setContentText(message)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setAutoCancel(true) // Allows user to dismiss
-                .setDefaults(Notification.DEFAULT_ALL) // Sound, vibration, etc.
+                .setAutoCancel(true)
+                .setDefaults(Notification.DEFAULT_ALL)
                 .build();
 
-        notificationManager.notify((int) System.currentTimeMillis(), alertNotification); // Unique ID for each alert
+        notificationManager.notify((int) System.currentTimeMillis(), alertNotification);
     }
 
     @Override
@@ -177,6 +208,7 @@ public class PetService extends Service {
         if (handler != null && updateRunnable != null) {
             handler.removeCallbacks(updateRunnable);
         }
+        notificationManager.cancel(NOTIFICATION_ID);
     }
 
     @Nullable

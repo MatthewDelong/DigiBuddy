@@ -145,14 +145,14 @@ public class MainActivity extends AppCompatActivity {
 
                 new AlertDialog.Builder(this)
                         .setTitle("Notification Permission Needed")
-                        .setMessage("DigiBuddy needs notification permission to show pet status updates and reminders. This helps you take better care of your pet!")
+                        .setMessage("DigiBuddy needs notification permission to show low stat alerts. This helps you take better care of your pet!")
                         .setPositiveButton("Allow", (dialog, which) -> {
                             ActivityCompat.requestPermissions(this,
                                     new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
                                     PERMISSION_REQUEST_CODE);
                         })
                         .setNegativeButton("Deny", (dialog, which) -> {
-                            Toast.makeText(this, "Notifications disabled. You can enable them in Settings later.", Toast.LENGTH_LONG).show();
+                            Toast.makeText(this, "Low stat alerts disabled. You can enable them in Settings later.", Toast.LENGTH_LONG).show();
                             // Delay service start to ensure pet is saved first
                             new Handler().postDelayed(() -> startPetService(), 1000);
                         })
@@ -173,7 +173,7 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "Notification permission granted! You'll get pet updates.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Notification permission granted! You'll get low stat alerts.", Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(this, "Notification permission denied. You can enable it in App Settings.", Toast.LENGTH_LONG).show();
             }
@@ -316,6 +316,22 @@ public class MainActivity extends AppCompatActivity {
 
         updatePetImage();
         updateButtonStates();
+        checkLowStats(); // ADDED: Check for low stats in-app
+    }
+
+    // ADDED: Check for low stats and show in-app warnings
+    private void checkLowStats() {
+        if (!pet.isAlive()) return;
+
+        if (pet.getHunger() <= 10 && pet.getHunger() > 0) {
+            showMessage("⚠️ Your DigiBuddy is very hungry! Feed it!");
+        } else if (pet.getHappiness() <= 10 && pet.getHappiness() > 0) {
+            showMessage("⚠️ Your DigiBuddy is very sad! Play with it!");
+        } else if (pet.getEnergy() <= 10 && pet.getEnergy() > 0) {
+            showMessage("⚠️ Your DigiBuddy is exhausted! Let it sleep!");
+        } else if (pet.getCleanliness() <= 10 && pet.getCleanliness() > 0) {
+            showMessage("⚠️ Your DigiBuddy is very dirty! Clean it!");
+        }
     }
 
     private void updatePetImage() {
