@@ -152,13 +152,7 @@ public class MainActivity extends AppCompatActivity {
                                     PERMISSION_REQUEST_CODE);
                         })
                         .setNegativeButton("Deny", (dialog, which) -> {
-                            // White text toast for disabled notifications
-                            Toast toast = Toast.makeText(MainActivity.this, "Low stat alerts disabled. You can enable them in Settings later.", Toast.LENGTH_LONG);
-                            TextView toastText = toast.getView().findViewById(android.R.id.message);
-                            if (toastText != null) {
-                                toastText.setTextColor(getColor(android.R.color.white));
-                            }
-                            toast.show();
+                            Toast.makeText(this, "Low stat alerts disabled. You can enable them in Settings later.", Toast.LENGTH_LONG).show();
                             // Delay service start to ensure pet is saved first
                             new Handler().postDelayed(() -> startPetService(), 1000);
                         })
@@ -179,21 +173,9 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // White text toast for granted permission
-                Toast toast = Toast.makeText(this, "Notification permission granted! You'll get low stat alerts.", Toast.LENGTH_SHORT);
-                TextView toastText = toast.getView().findViewById(android.R.id.message);
-                if (toastText != null) {
-                    toastText.setTextColor(getColor(android.R.color.white));
-                }
-                toast.show();
+                Toast.makeText(this, "Notification permission granted! You'll get low stat alerts.", Toast.LENGTH_SHORT).show();
             } else {
-                // White text toast for denied permission
-                Toast toast = Toast.makeText(this, "Notification permission denied. You can enable it in App Settings.", Toast.LENGTH_LONG);
-                TextView toastText = toast.getView().findViewById(android.R.id.message);
-                if (toastText != null) {
-                    toastText.setTextColor(getColor(android.R.color.white));
-                }
-                toast.show();
+                Toast.makeText(this, "Notification permission denied. You can enable it in App Settings.", Toast.LENGTH_LONG).show();
             }
             // Start service regardless of permission result
             startPetService();
@@ -388,13 +370,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void showMessage(String message) {
         messageText.setText(message);
-        // White text toast for all messages
-        Toast toast = Toast.makeText(this, message, Toast.LENGTH_SHORT);
-        TextView toastText = toast.getView().findViewById(android.R.id.message);
-        if (toastText != null) {
-            toastText.setTextColor(getColor(android.R.color.white));
-        }
-        toast.show();
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
     private void startUIUpdates() {

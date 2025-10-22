@@ -13,7 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 public class PetService extends Service {
-    private static final long UPDATE_INTERVAL = 60000; // 1 minute
+    private static final long UPDATE_INTERVAL = 60000;
     private static final int NOTIFICATION_ID = 1;
     private static final String CHANNEL_ID = "pet_service_channel";
     private static final String ALERT_CHANNEL_ID = "pet_alert_channel";
@@ -28,7 +28,7 @@ public class PetService extends Service {
         super.onCreate();
         handler = new Handler();
         petPreferences = new PetPreferences(this);
-        notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        notificationManager = getSystemService(NotificationManager.class);
         createNotificationChannels();
     }
 
@@ -50,24 +50,23 @@ public class PetService extends Service {
 
     private void createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Main service channel
+            // Main service channel (low priority)
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
-                    "Pet Service",
+                    "Pet Service Channel",
                     NotificationManager.IMPORTANCE_LOW
             );
-            channel.setDescription("Background service for DigiBuddy");
+            channel.setDescription("Channel for pet service");
             channel.setShowBadge(false);
 
-            // Alert channel for low stats
+            // Alert channel (high priority for low stats)
             NotificationChannel alertChannel = new NotificationChannel(
                     ALERT_CHANNEL_ID,
-                    "Pet Alerts",
+                    "Pet Alert Channel",
                     NotificationManager.IMPORTANCE_HIGH
             );
-            alertChannel.setDescription("Alerts for low pet stats");
+            alertChannel.setDescription("Channel for pet emergency alerts");
             alertChannel.enableVibration(true);
-            alertChannel.setImportance(NotificationManager.IMPORTANCE_HIGH);
 
             notificationManager.createNotificationChannel(channel);
             notificationManager.createNotificationChannel(alertChannel);
@@ -77,7 +76,7 @@ public class PetService extends Service {
     private Notification createNotification() {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("DigiBuddy")
-                .setContentText("Monitoring your pet")
+                .setContentText("Monitoring your pet's stats")
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(true)
@@ -99,113 +98,108 @@ public class PetService extends Service {
     }
 
     private void updatePetStats() {
-        try {
-            Pet pet = petPreferences.loadPet();
+        Pet pet = petPreferences.loadPet();
 
-            if (!pet.isAlive()) {
-                stopSelf();
-                return;
-            }
+        if (!pet.isAlive()) {
+            stopSelf();
+            return;
+        }
 
-            // Check if this is a fresh pet
-            boolean isFreshPet = pet.getHunger() == 100 &&
-                    pet.getHappiness() == 100 &&
-                    pet.getEnergy() == 100 &&
-                    pet.getAge() == 0 &&
-                    pet.getCleanliness() == 100;
+        // Check if this is a fresh pet (all stats at starting values)
+        boolean isFreshPet = pet.getHunger() == 100 &&
+                pet.getHappiness() == 100 &&
+                pet.getEnergy() == 100 &&
+                pet.getAge() == 0 &&
+                pet.getCleanliness() == 100;
 
-            // Only apply degradation if NOT a fresh pet
-            if (!isFreshPet) {
-                long timePassed = System.currentTimeMillis() - pet.getLastUpdate();
-                long minutesPassed = timePassed / (1000 * 60);
+        // Only apply degradation if this is NOT a fresh pet
+        if (!isFreshPet) {
+            // Calculate time passed since last update (in minutes)
+            long timePassed = System.currentTimeMillis() - pet.getLastUpdate();
+            long minutesPassed = timePassed / (1000 * 60);
 
-                if (minutesPassed > 0) {
-                    double hungerLoss = minutesPassed * 0.1;
-                    double happinessLoss = minutesPassed * 0.05;
-                    double energyLoss = minutesPassed * 0.05;
-                    double cleanlinessLoss = minutesPassed * 0.02;
-                    double ageGain = minutesPassed * 0.001;
+            if (minutesPassed > 0) {
+                // Apply stat changes based on time passed
+                double hungerLoss = minutesPassed * 0.1;
+                double happinessLoss = minutesPassed * 0.05;
+                double energyLoss = minutesPassed * 0.05;
+                double cleanlinessLoss = minutesPassed * 0.02;
+                double ageGain = minutesPassed * 0.001;
 
-                    // Sleep benefits
-                    if (pet.isSleeping()) {
-                        double energyGain = minutesPassed * 0.5;
-                        pet.setEnergy(Math.min(100, pet.getEnergy() + energyGain));
-                        hungerLoss *= 0.3;
-                        happinessLoss *= 0.5;
-                        cleanlinessLoss *= 0.5;
-                        energyLoss = 0;
-                    }
-
-                    pet.setHunger(Math.max(0, pet.getHunger() - hungerLoss));
-                    pet.setHappiness(Math.max(0, pet.getHappiness() - happinessLoss));
-                    pet.setEnergy(Math.max(0, pet.getEnergy() - energyLoss));
-                    pet.setCleanliness(Math.max(0, pet.getCleanliness() - cleanlinessLoss));
-                    pet.setAge(pet.getAge() + ageGain);
-
-                    pet.updateStage();
-                    pet.checkDeath();
-                    pet.setLastUpdate(System.currentTimeMillis());
-                    petPreferences.savePet(pet);
+                // If sleeping, apply sleep benefits
+                if (pet.isSleeping()) {
+                    // While sleeping: energy restores, other stats decrease slower
+                    double energyGain = minutesPassed * 0.5;
+                    pet.setEnergy(Math.min(100, pet.getEnergy() + energyGain));
+                    hungerLoss *= 0.3;
+                    happinessLoss *= 0.5;
+                    cleanlinessLoss *= 0.5;
+                    energyLoss = 0;
                 }
+
+                // Apply stat changes
+                pet.setHunger(Math.max(0, pet.getHunger() - hungerLoss));
+                pet.setHappiness(Math.max(0, pet.getHappiness() - happinessLoss));
+                pet.setEnergy(Math.max(0, pet.getEnergy() - energyLoss));
+                pet.setCleanliness(Math.max(0, pet.getCleanliness() - cleanlinessLoss));
+                pet.setAge(pet.getAge() + ageGain);
+
+                // Update pet stage and check for death
+                pet.updateStage();
+                pet.checkDeath();
+
+                // Save updated pet state
+                pet.setLastUpdate(System.currentTimeMillis());
+                petPreferences.savePet(pet);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
     private void checkLowStatsAndNotify() {
-        try {
-            Pet pet = petPreferences.loadPet();
+        Pet pet = petPreferences.loadPet();
 
-            if (!pet.isAlive()) {
-                return;
-            }
+        if (!pet.isAlive()) {
+            return;
+        }
 
-            // Check for low stats (10% or below)
-            if (pet.getHunger() <= 10 && pet.getHunger() > 0) {
-                sendAlertNotification("Hunger Alert", "Your DigiBuddy is very hungry! Feed it soon!");
-            }
+        // Check for low stats (below 10%) - ONLY show notifications for these
+        if (pet.getHunger() <= 10 && pet.getHunger() > 0) {
+            sendAlertNotification("Hunger Alert!", "Your DigiBuddy is very hungry! Feed it soon!");
+        }
 
-            if (pet.getHappiness() <= 10 && pet.getHappiness() > 0) {
-                sendAlertNotification("Happiness Alert", "Your DigiBuddy is very sad! Play with it!");
-            }
+        if (pet.getHappiness() <= 10 && pet.getHappiness() > 0) {
+            sendAlertNotification("Happiness Alert!", "Your DigiBuddy is very sad! Play with it!");
+        }
 
-            if (pet.getEnergy() <= 10 && pet.getEnergy() > 0) {
-                sendAlertNotification("Energy Alert", "Your DigiBuddy is very tired! Let it sleep!");
-            }
+        if (pet.getEnergy() <= 10 && pet.getEnergy() > 0) {
+            sendAlertNotification("Energy Alert!", "Your DigiBuddy is very tired! Let it sleep!");
+        }
 
-            if (pet.getCleanliness() <= 10 && pet.getCleanliness() > 0) {
-                sendAlertNotification("Cleanliness Alert", "Your DigiBuddy is very dirty! Clean it!");
-            }
+        if (pet.getCleanliness() <= 10 && pet.getCleanliness() > 0) {
+            sendAlertNotification("Cleanliness Alert!", "Your DigiBuddy is very dirty! Clean it!");
+        }
 
-            // Critical alerts (5% or below)
-            if (pet.getHunger() <= 5 && pet.getHunger() > 0) {
-                sendAlertNotification("CRITICAL: Hunger Emergency", "Your DigiBuddy is starving! Feed it immediately!");
-            }
+        // Critical alerts (below 5%)
+        if (pet.getHunger() <= 5 && pet.getHunger() > 0) {
+            sendAlertNotification("CRITICAL: Hunger Emergency!", "Your DigiBuddy is starving! Feed it immediately!");
+        }
 
-            if (pet.getHappiness() <= 5 && pet.getHappiness() > 0) {
-                sendAlertNotification("CRITICAL: Happiness Emergency", "Your DigiBuddy is extremely sad! It needs attention!");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (pet.getHappiness() <= 5 && pet.getHappiness() > 0) {
+            sendAlertNotification("CRITICAL: Happiness Emergency!", "Your DigiBuddy is extremely sad! It needs attention!");
         }
     }
 
     private void sendAlertNotification(String title, String message) {
-        try {
-            Notification alertNotification = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
-                    .setContentTitle(title)
-                    .setContentText(message)
-                    .setSmallIcon(R.mipmap.ic_launcher)
-                    .setPriority(NotificationCompat.PRIORITY_HIGH)
-                    .setAutoCancel(true)
-                    .setDefaults(Notification.DEFAULT_ALL)
-                    .build();
+        Notification alertNotification = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setDefaults(Notification.DEFAULT_ALL)
+                .build();
 
-            notificationManager.notify((int) System.currentTimeMillis(), alertNotification);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        notificationManager.notify((int) System.currentTimeMillis(), alertNotification);
     }
 
     @Override
@@ -214,7 +208,6 @@ public class PetService extends Service {
         if (handler != null && updateRunnable != null) {
             handler.removeCallbacks(updateRunnable);
         }
-        // Cancel the foreground notification
         notificationManager.cancel(NOTIFICATION_ID);
     }
 
