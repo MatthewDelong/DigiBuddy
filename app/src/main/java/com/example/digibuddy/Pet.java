@@ -10,6 +10,7 @@ public class Pet {
     private boolean isAlive;
     private double cleanliness;
     private long lastUpdate;
+    private int milestonesAchieved;
 
     public Pet() {
         this.hunger = 100;
@@ -21,6 +22,7 @@ public class Pet {
         this.isAlive = true;
         this.cleanliness = 100;
         this.lastUpdate = System.currentTimeMillis();
+        this.milestonesAchieved = 0;
     }
 
     public double getHunger() { return hunger; }
@@ -58,6 +60,11 @@ public class Pet {
     public long getLastUpdate() { return lastUpdate; }
     public void setLastUpdate(long lastUpdate) { this.lastUpdate = lastUpdate; }
 
+    public int getMilestonesAchieved() { return milestonesAchieved; }
+    public void setMilestonesAchieved(int milestonesAchieved) {
+        this.milestonesAchieved = milestonesAchieved;
+    }
+
     public void updateStage() {
         if (age >= 7) {
             stage = "adult";
@@ -74,5 +81,18 @@ public class Pet {
         if (hunger <= 0 || happiness <= 0 || energy <= 0) {
             isAlive = false;
         }
+    }
+
+    public void reset() {
+        this.hunger = 100;
+        this.happiness = 100;
+        this.energy = 100;
+        this.age = 0;
+        this.stage = "egg";
+        this.isSleeping = false;
+        this.isAlive = true;
+        this.cleanliness = 100;
+        this.lastUpdate = System.currentTimeMillis();
+        this.milestonesAchieved = 0;
     }
 }

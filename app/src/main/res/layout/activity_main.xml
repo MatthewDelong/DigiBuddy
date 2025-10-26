@@ -39,6 +39,16 @@
                 android:src="@drawable/ic_pet_egg"
                 android:contentDescription="Your DigiBuddy" />
 
+            <!-- NEW: Milestone Stars -->
+            <LinearLayout
+                android:id="@+id/starsContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginTop="8dp">
+                <!-- Stars will be added programmatically -->
+            </LinearLayout>
         </LinearLayout>
 
         <!-- Stats Container -->

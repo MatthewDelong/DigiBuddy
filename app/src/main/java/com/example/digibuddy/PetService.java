@@ -50,7 +50,6 @@ public class PetService extends Service {
 
     private void createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Main service channel (low priority)
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
                     "Pet Service Channel",
@@ -59,7 +58,6 @@ public class PetService extends Service {
             channel.setDescription("Channel for pet service");
             channel.setShowBadge(false);
 
-            // Alert channel (high priority for low stats)
             NotificationChannel alertChannel = new NotificationChannel(
                     ALERT_CHANNEL_ID,
                     "Pet Alert Channel",
@@ -105,34 +103,27 @@ public class PetService extends Service {
             return;
         }
 
-        // Check if this is a fresh pet (all stats at starting values)
         boolean isFreshPet = pet.getHunger() == 100 &&
                 pet.getHappiness() == 100 &&
                 pet.getEnergy() == 100 &&
                 pet.getAge() == 0 &&
                 pet.getCleanliness() == 100;
 
-        // Only apply degradation if this is NOT a fresh pet
         if (!isFreshPet) {
-            // Calculate time passed since last update (in minutes)
             long timePassed = System.currentTimeMillis() - pet.getLastUpdate();
             long minutesPassed = timePassed / (1000 * 60);
 
             if (minutesPassed > 0) {
-                // Apply stat changes based on time passed
                 double hungerLoss = minutesPassed * 0.1;
                 double happinessLoss = minutesPassed * 0.05;
                 double energyLoss = minutesPassed * 0.05;
                 double cleanlinessLoss = minutesPassed * 0.02;
 
-                // NEW: Age increases based on real time (1 day = 1440 minutes)
                 double daysPassed = minutesPassed / 1440.0;
                 double previousAge = pet.getAge();
                 pet.setAge(pet.getAge() + daysPassed);
 
-                // If sleeping, apply sleep benefits
                 if (pet.isSleeping()) {
-                    // While sleeping: energy restores, other stats decrease slower
                     double energyGain = minutesPassed * 0.5;
                     pet.setEnergy(Math.min(100, pet.getEnergy() + energyGain));
                     hungerLoss *= 0.3;
@@ -141,39 +132,35 @@ public class PetService extends Service {
                     energyLoss = 0;
                 }
 
-                // Apply stat changes
                 pet.setHunger(Math.max(0, pet.getHunger() - hungerLoss));
                 pet.setHappiness(Math.max(0, pet.getHappiness() - happinessLoss));
                 pet.setEnergy(Math.max(0, pet.getEnergy() - energyLoss));
                 pet.setCleanliness(Math.max(0, pet.getCleanliness() - cleanlinessLoss));
 
-                // Update pet stage and check for death
                 pet.updateStage();
                 pet.checkDeath();
 
-                // Save updated pet state
                 pet.setLastUpdate(System.currentTimeMillis());
                 petPreferences.savePet(pet);
 
-                // NEW: Check for milestone achievements in background
                 checkMilestonesInBackground(previousAge, pet.getAge());
             }
         }
     }
 
-    // NEW: Check for milestone achievements from background service
     private void checkMilestonesInBackground(double previousAge, double currentAge) {
         int previousDays = (int) previousAge;
         int currentDays = (int) currentAge;
 
-        // Check if we crossed any 10-day milestone
         if (currentDays > previousDays && currentDays % 10 == 0) {
-            // Send a special milestone notification
             sendMilestoneNotification(currentDays);
+
+            Pet pet = petPreferences.loadPet();
+            pet.setMilestonesAchieved(currentDays / 10);
+            petPreferences.savePet(pet);
         }
     }
 
-    // NEW: Send milestone achievement notification
     private void sendMilestoneNotification(int days) {
         Notification milestoneNotification = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
                 .setContentTitle("🎉 Milestone Achieved!")
@@ -194,7 +181,6 @@ public class PetService extends Service {
             return;
         }
 
-        // Check for low stats (below 10%) - ONLY show notifications for these
         if (pet.getHunger() <= 10 && pet.getHunger() > 0) {
             sendAlertNotification("Hunger Alert!", "Your DigiBuddy is very hungry! Feed it soon!");
         }
@@ -211,7 +197,6 @@ public class PetService extends Service {
             sendAlertNotification("Cleanliness Alert!", "Your DigiBuddy is very dirty! Clean it!");
         }
 
-        // Critical alerts (below 5%)
         if (pet.getHunger() <= 5 && pet.getHunger() > 0) {
             sendAlertNotification("CRITICAL: Hunger Emergency!", "Your DigiBuddy is starving! Feed it immediately!");
         }

@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -23,6 +24,7 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar hungerBar, happinessBar, energyBar;
     private TextView hungerText, happinessText, energyText, ageText, messageText;
     private Button feedButton, playButton, sleepButton, cleanButton, resetButton;
+    private LinearLayout starsContainer;
 
     private final Handler uiHandler = new Handler();
     private Runnable uiUpdateRunnable;
@@ -54,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
         energyText = findViewById(R.id.energyText);
         ageText = findViewById(R.id.ageText);
         messageText = findViewById(R.id.messageText);
+        starsContainer = findViewById(R.id.starsContainer);
 
         feedButton = findViewById(R.id.feedButton);
         playButton = findViewById(R.id.playButton);
@@ -86,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
             double energyLoss = minutesPassed * 0.05;
             double cleanlinessLoss = minutesPassed * 0.02;
 
-            // NEW: Calculate age based on days passed (1440 minutes = 1 day)
+            // Calculate age based on days passed (1440 minutes = 1 day)
             double daysPassed = minutesPassed / 1440.0;
             double previousAge = pet.getAge();
             pet.setAge(pet.getAge() + daysPassed);
@@ -97,12 +100,12 @@ public class MainActivity extends AppCompatActivity {
             // If sleeping, apply sleep benefits
             if (pet.isSleeping()) {
                 // While sleeping: energy restores, hunger decreases slower
-                double energyGain = minutesPassed * 0.5; // Energy restores while sleeping
+                double energyGain = minutesPassed * 0.5;
                 pet.setEnergy(Math.min(100, pet.getEnergy() + energyGain));
-                hungerLoss *= 0.3; // Hunger decreases much slower while sleeping
-                happinessLoss *= 0.5; // Happiness decreases slower while sleeping
-                cleanlinessLoss *= 0.5; // Cleanliness decreases slower while sleeping
-                energyLoss = 0; // No energy loss while sleeping
+                hungerLoss *= 0.3;
+                happinessLoss *= 0.5;
+                cleanlinessLoss *= 0.5;
+                energyLoss = 0;
             }
 
             pet.setHunger(Math.max(0, pet.getHunger() - hungerLoss));
@@ -133,7 +136,6 @@ public class MainActivity extends AppCompatActivity {
         updateSleepButtonText();
     }
 
-    // NEW: Check for milestone achievements
     private void checkMilestones(double previousAge, double currentAge) {
         int previousDays = (int) previousAge;
         int currentDays = (int) currentAge;
@@ -143,10 +145,42 @@ public class MainActivity extends AppCompatActivity {
             String milestoneMessage = "🎉 Milestone reached! Your DigiBuddy is now " + currentDays + " days old!";
             showMessage(milestoneMessage);
 
-            // You could add special rewards here, like:
-            // - Temporary stat boosts
-            // - Special appearance changes
-            // - Unlockable items
+            // Update stars display
+            updateStarsDisplay();
+        }
+    }
+
+    private void updateStarsDisplay() {
+        starsContainer.removeAllViews();
+
+        int totalStars = (int) pet.getAge() / 10;
+        int maxStarsToShow = 10;
+
+        for (int i = 0; i < Math.min(totalStars, maxStarsToShow); i++) {
+            ImageView star = new ImageView(this);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    36,
+                    36
+            );
+            params.setMargins(4, 0, 4, 0);
+            star.setLayoutParams(params);
+            star.setImageResource(R.drawable.ic_gold_star);
+            star.setContentDescription("10-day milestone star");
+            starsContainer.addView(star);
+        }
+
+        if (totalStars > maxStarsToShow) {
+            TextView extraStars = new TextView(this);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            params.setMargins(8, 0, 0, 0);
+            extraStars.setLayoutParams(params);
+            extraStars.setText("+" + (totalStars - maxStarsToShow));
+            extraStars.setTextSize(14);
+            extraStars.setTextColor(getResources().getColor(R.color.gold, getTheme()));
+            starsContainer.addView(extraStars);
         }
     }
 
@@ -159,7 +193,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void requestNotificationPermission() {
-        // Only required for Android 13 (API 33) and above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this,
                     android.Manifest.permission.POST_NOTIFICATIONS) !=
@@ -175,17 +208,14 @@ public class MainActivity extends AppCompatActivity {
                         })
                         .setNegativeButton("Deny", (dialog, which) -> {
                             Toast.makeText(this, "Low stat alerts disabled. You can enable them in Settings later.", Toast.LENGTH_LONG).show();
-                            // Delay service start to ensure pet is saved first
                             new Handler().postDelayed(() -> startPetService(), 1000);
                         })
                         .setCancelable(false)
                         .show();
             } else {
-                // Delay service start to ensure pet is saved first
                 new Handler().postDelayed(() -> startPetService(), 1000);
             }
         } else {
-            // Delay service start to ensure pet is saved first
             new Handler().postDelayed(() -> startPetService(), 1000);
         }
     }
@@ -199,7 +229,6 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 Toast.makeText(this, "Notification permission denied. You can enable it in App Settings.", Toast.LENGTH_LONG).show();
             }
-            // Start service regardless of permission result
             startPetService();
         }
     }
@@ -231,7 +260,7 @@ public class MainActivity extends AppCompatActivity {
 
         pet.setHunger(Math.min(100, pet.getHunger() + 25));
         pet.setHappiness(Math.min(100, pet.getHappiness() + 5));
-        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 5)); // Feeding makes pet a bit messy
+        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 5));
         saveAndUpdate();
         showMessage("Yum! Your DigiBuddy enjoyed the meal!");
     }
@@ -255,7 +284,7 @@ public class MainActivity extends AppCompatActivity {
         pet.setHappiness(Math.min(100, pet.getHappiness() + 15));
         pet.setEnergy(Math.max(0, pet.getEnergy() - 8));
         pet.setHunger(Math.max(0, pet.getHunger() - 3));
-        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 3)); // Playing makes pet messy
+        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 3));
         saveAndUpdate();
         showMessage("Your DigiBuddy had fun playing!");
     }
@@ -333,14 +362,14 @@ public class MainActivity extends AppCompatActivity {
         hungerText.setText(String.valueOf((int) pet.getHunger()));
         happinessText.setText(String.valueOf((int) pet.getHappiness()));
         energyText.setText(String.valueOf((int) pet.getEnergy()));
-        ageText.setText(String.valueOf((int) pet.getAge())); // Display as integer days
+        ageText.setText(String.valueOf((int) pet.getAge()));
 
+        updateStarsDisplay();
         updatePetImage();
         updateButtonStates();
-        checkLowStats(); // ADDED: Check for low stats in-app
+        checkLowStats();
     }
 
-    // ADDED: Check for low stats and show in-app warnings
     private void checkLowStats() {
         if (!pet.isAlive()) return;
 
@@ -386,7 +415,7 @@ public class MainActivity extends AppCompatActivity {
         playButton.setEnabled(isAlive && !isSleeping && pet.getEnergy() >= 20);
         sleepButton.setEnabled(isAlive);
         cleanButton.setEnabled(isAlive && !isSleeping);
-        resetButton.setEnabled(true); // Always enabled
+        resetButton.setEnabled(true);
     }
 
     private void showMessage(String message) {
@@ -398,30 +427,23 @@ public class MainActivity extends AppCompatActivity {
         uiUpdateRunnable = new Runnable() {
             @Override
             public void run() {
-                // Simulate stat decay over time (only when app is open)
                 if (pet.isAlive()) {
                     double previousAge = pet.getAge();
 
                     if (pet.isSleeping()) {
-                        // While sleeping: energy restores, other stats decrease slower
                         pet.setEnergy(Math.min(100, pet.getEnergy() + 0.3));
                         pet.setHunger(Math.max(0, pet.getHunger() - 0.03));
                         pet.setHappiness(Math.max(0, pet.getHappiness() - 0.02));
                         pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.01));
                     } else {
-                        // While awake: normal stat decay
                         pet.setHunger(Math.max(0, pet.getHunger() - 0.1));
                         pet.setHappiness(Math.max(0, pet.getHappiness() - 0.05));
                         pet.setEnergy(Math.max(0, pet.getEnergy() - 0.05));
                         pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.02));
                     }
 
-                    // NEW: Age increases very slowly in real-time (1 day = 1440 minutes of app activity)
-                    pet.setAge(pet.getAge() + 0.00001157); // Approximately 1 day per 1440 minutes of app activity
-
-                    // Check for milestones
+                    pet.setAge(pet.getAge() + 0.00001157);
                     checkMilestones(previousAge, pet.getAge());
-
                     pet.updateStage();
                     pet.checkDeath();
                     saveAndUpdate();
@@ -435,7 +457,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Reload pet data when app comes to foreground
         loadPet();
     }
 
@@ -445,6 +466,5 @@ public class MainActivity extends AppCompatActivity {
         if (uiHandler != null && uiUpdateRunnable != null) {
             uiHandler.removeCallbacks(uiUpdateRunnable);
         }
-        // Don't stop service here - let it run in background
     }
 }
