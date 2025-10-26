@@ -20,7 +20,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 100;
 
     private ImageView petImage;
-    private ProgressBar hungerBar, happinessBar, energyBar, ageBar;
+    private ProgressBar hungerBar, happinessBar, energyBar;
     private TextView hungerText, happinessText, energyText, ageText, messageText;
     private Button feedButton, playButton, sleepButton, cleanButton, resetButton;
 
@@ -48,7 +48,6 @@ public class MainActivity extends AppCompatActivity {
         hungerBar = findViewById(R.id.hungerBar);
         happinessBar = findViewById(R.id.happinessBar);
         energyBar = findViewById(R.id.energyBar);
-        ageBar = findViewById(R.id.ageBar);
 
         hungerText = findViewById(R.id.hungerText);
         happinessText = findViewById(R.id.happinessText);
@@ -85,8 +84,15 @@ public class MainActivity extends AppCompatActivity {
             double hungerLoss = minutesPassed * 0.1;
             double happinessLoss = minutesPassed * 0.05;
             double energyLoss = minutesPassed * 0.05;
-            double ageGain = minutesPassed * 0.001;
             double cleanlinessLoss = minutesPassed * 0.02;
+
+            // NEW: Calculate age based on days passed (1440 minutes = 1 day)
+            double daysPassed = minutesPassed / 1440.0;
+            double previousAge = pet.getAge();
+            pet.setAge(pet.getAge() + daysPassed);
+
+            // Check for milestone achievements
+            checkMilestones(previousAge, pet.getAge());
 
             // If sleeping, apply sleep benefits
             if (pet.isSleeping()) {
@@ -103,7 +109,6 @@ public class MainActivity extends AppCompatActivity {
             pet.setHappiness(Math.max(0, pet.getHappiness() - happinessLoss));
             pet.setEnergy(Math.max(0, pet.getEnergy() - energyLoss));
             pet.setCleanliness(Math.max(0, pet.getCleanliness() - cleanlinessLoss));
-            pet.setAge(pet.getAge() + ageGain);
 
             pet.updateStage();
             pet.checkDeath();
@@ -126,6 +131,23 @@ public class MainActivity extends AppCompatActivity {
 
         updateUI();
         updateSleepButtonText();
+    }
+
+    // NEW: Check for milestone achievements
+    private void checkMilestones(double previousAge, double currentAge) {
+        int previousDays = (int) previousAge;
+        int currentDays = (int) currentAge;
+
+        // Check if we crossed any 10-day milestone
+        if (currentDays > previousDays && currentDays % 10 == 0) {
+            String milestoneMessage = "🎉 Milestone reached! Your DigiBuddy is now " + currentDays + " days old!";
+            showMessage(milestoneMessage);
+
+            // You could add special rewards here, like:
+            // - Temporary stat boosts
+            // - Special appearance changes
+            // - Unlockable items
+        }
     }
 
     private void setupButtons() {
@@ -307,12 +329,11 @@ public class MainActivity extends AppCompatActivity {
         hungerBar.setProgress((int) pet.getHunger());
         happinessBar.setProgress((int) pet.getHappiness());
         energyBar.setProgress((int) pet.getEnergy());
-        ageBar.setProgress((int) Math.min(100, pet.getAge() * 14.28)); // Adjusted for 0-7 age range
 
         hungerText.setText(String.valueOf((int) pet.getHunger()));
         happinessText.setText(String.valueOf((int) pet.getHappiness()));
         energyText.setText(String.valueOf((int) pet.getEnergy()));
-        ageText.setText(String.format("%.1f", pet.getAge()));
+        ageText.setText(String.valueOf((int) pet.getAge())); // Display as integer days
 
         updatePetImage();
         updateButtonStates();
@@ -379,6 +400,8 @@ public class MainActivity extends AppCompatActivity {
             public void run() {
                 // Simulate stat decay over time (only when app is open)
                 if (pet.isAlive()) {
+                    double previousAge = pet.getAge();
+
                     if (pet.isSleeping()) {
                         // While sleeping: energy restores, other stats decrease slower
                         pet.setEnergy(Math.min(100, pet.getEnergy() + 0.3));
@@ -393,7 +416,12 @@ public class MainActivity extends AppCompatActivity {
                         pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.02));
                     }
 
-                    pet.setAge(pet.getAge() + 0.001);
+                    // NEW: Age increases very slowly in real-time (1 day = 1440 minutes of app activity)
+                    pet.setAge(pet.getAge() + 0.00001157); // Approximately 1 day per 1440 minutes of app activity
+
+                    // Check for milestones
+                    checkMilestones(previousAge, pet.getAge());
+
                     pet.updateStage();
                     pet.checkDeath();
                     saveAndUpdate();

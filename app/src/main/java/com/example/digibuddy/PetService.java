@@ -124,7 +124,11 @@ public class PetService extends Service {
                 double happinessLoss = minutesPassed * 0.05;
                 double energyLoss = minutesPassed * 0.05;
                 double cleanlinessLoss = minutesPassed * 0.02;
-                double ageGain = minutesPassed * 0.001;
+
+                // NEW: Age increases based on real time (1 day = 1440 minutes)
+                double daysPassed = minutesPassed / 1440.0;
+                double previousAge = pet.getAge();
+                pet.setAge(pet.getAge() + daysPassed);
 
                 // If sleeping, apply sleep benefits
                 if (pet.isSleeping()) {
@@ -142,7 +146,6 @@ public class PetService extends Service {
                 pet.setHappiness(Math.max(0, pet.getHappiness() - happinessLoss));
                 pet.setEnergy(Math.max(0, pet.getEnergy() - energyLoss));
                 pet.setCleanliness(Math.max(0, pet.getCleanliness() - cleanlinessLoss));
-                pet.setAge(pet.getAge() + ageGain);
 
                 // Update pet stage and check for death
                 pet.updateStage();
@@ -151,8 +154,37 @@ public class PetService extends Service {
                 // Save updated pet state
                 pet.setLastUpdate(System.currentTimeMillis());
                 petPreferences.savePet(pet);
+
+                // NEW: Check for milestone achievements in background
+                checkMilestonesInBackground(previousAge, pet.getAge());
             }
         }
+    }
+
+    // NEW: Check for milestone achievements from background service
+    private void checkMilestonesInBackground(double previousAge, double currentAge) {
+        int previousDays = (int) previousAge;
+        int currentDays = (int) currentAge;
+
+        // Check if we crossed any 10-day milestone
+        if (currentDays > previousDays && currentDays % 10 == 0) {
+            // Send a special milestone notification
+            sendMilestoneNotification(currentDays);
+        }
+    }
+
+    // NEW: Send milestone achievement notification
+    private void sendMilestoneNotification(int days) {
+        Notification milestoneNotification = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
+                .setContentTitle("🎉 Milestone Achieved!")
+                .setContentText("Your DigiBuddy is now " + days + " days old! Amazing care!")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setDefaults(Notification.DEFAULT_ALL)
+                .build();
+
+        notificationManager.notify((int) System.currentTimeMillis() + 1, milestoneNotification);
     }
 
     private void checkLowStatsAndNotify() {
