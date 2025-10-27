@@ -4,6 +4,12 @@
 
 DigiBuddy is an Android virtual pet care application where users can nurture and care for their digital companion. The app features realistic stat management, background service updates, milestone achievements with visual rewards, and smart notifications.
 
+## 🖥 Screenshot 
+
+| V1.0.4-b      |
+|-----------|
+|![DigiBuddy-1 0 4-b](https://github.com/user-attachments/assets/34c86d50-c772-492c-b0f6-45e58f9d6658)|
+
 ## Features
 
 ### 🎯 Core Gameplay
