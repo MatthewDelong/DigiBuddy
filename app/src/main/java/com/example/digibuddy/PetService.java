@@ -45,20 +45,31 @@ public class PetService extends Service {
 
     // NEW: Initialize alert tracking state
     private void initializeAlertTracking() {
-        alertSentMap.put("hunger_low", false);
-        alertSentMap.put("happiness_low", false);
-        alertSentMap.put("energy_low", false);
-        alertSentMap.put("cleanliness_low", false);
-        alertSentMap.put("hunger_critical", false);
-        alertSentMap.put("happiness_critical", false);
+        // Warning alerts (25% threshold)
+        alertSentMap.put("hunger_warning", false);
+        alertSentMap.put("happiness_warning", false);
+        alertSentMap.put("energy_warning", false);
+        alertSentMap.put("cleanliness_warning", false);
+
+        // Emergency alerts (15% threshold)
+        alertSentMap.put("hunger_emergency", false);
+        alertSentMap.put("happiness_emergency", false);
+        alertSentMap.put("energy_emergency", false);
+        alertSentMap.put("cleanliness_emergency", false);
 
         long currentTime = System.currentTimeMillis();
-        lastAlertTimeMap.put("hunger_low", currentTime);
-        lastAlertTimeMap.put("happiness_low", currentTime);
-        lastAlertTimeMap.put("energy_low", currentTime);
-        lastAlertTimeMap.put("cleanliness_low", currentTime);
-        lastAlertTimeMap.put("hunger_critical", currentTime);
-        lastAlertTimeMap.put("happiness_critical", currentTime);
+
+        // Warning timestamps
+        lastAlertTimeMap.put("hunger_warning", currentTime);
+        lastAlertTimeMap.put("happiness_warning", currentTime);
+        lastAlertTimeMap.put("energy_warning", currentTime);
+        lastAlertTimeMap.put("cleanliness_warning", currentTime);
+
+        // Emergency timestamps
+        lastAlertTimeMap.put("hunger_emergency", currentTime);
+        lastAlertTimeMap.put("happiness_emergency", currentTime);
+        lastAlertTimeMap.put("energy_emergency", currentTime);
+        lastAlertTimeMap.put("cleanliness_emergency", currentTime);
     }
 
     @Override
@@ -189,73 +200,95 @@ public class PetService extends Service {
         long currentTime = System.currentTimeMillis();
         long fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
 
-        // Check for low stats with cooldown and state tracking
-        if (pet.getHunger() <= 10 && pet.getHunger() > 0) {
-            if (!alertSentMap.get("hunger_low") ||
-                    (currentTime - lastAlertTimeMap.get("hunger_low") > fiveMinutes)) {
-                sendAlertNotification("Hunger Alert!", "Your DigiBuddy is very hungry! Feed it soon!");
-                alertSentMap.put("hunger_low", true);
-                lastAlertTimeMap.put("hunger_low", currentTime);
+        // WARNING ALERTS - 25% threshold
+        if (pet.getHunger() <= 25 && pet.getHunger() > 15) {
+            if (!alertSentMap.get("hunger_warning") ||
+                    (currentTime - lastAlertTimeMap.get("hunger_warning") > fiveMinutes)) {
+                sendAlertNotification("Hunger Warning", "Your DigiBuddy is getting hungry! Consider feeding soon.");
+                alertSentMap.put("hunger_warning", true);
+                lastAlertTimeMap.put("hunger_warning", currentTime);
             }
         } else {
             // Reset the alert state when condition is no longer true
-            alertSentMap.put("hunger_low", false);
+            alertSentMap.put("hunger_warning", false);
         }
 
-        if (pet.getHappiness() <= 10 && pet.getHappiness() > 0) {
-            if (!alertSentMap.get("happiness_low") ||
-                    (currentTime - lastAlertTimeMap.get("happiness_low") > fiveMinutes)) {
-                sendAlertNotification("Happiness Alert!", "Your DigiBuddy is very sad! Play with it!");
-                alertSentMap.put("happiness_low", true);
-                lastAlertTimeMap.put("happiness_low", currentTime);
+        if (pet.getHappiness() <= 25 && pet.getHappiness() > 15) {
+            if (!alertSentMap.get("happiness_warning") ||
+                    (currentTime - lastAlertTimeMap.get("happiness_warning") > fiveMinutes)) {
+                sendAlertNotification("Happiness Warning", "Your DigiBuddy is feeling sad! Some playtime would help!");
+                alertSentMap.put("happiness_warning", true);
+                lastAlertTimeMap.put("happiness_warning", currentTime);
             }
         } else {
-            alertSentMap.put("happiness_low", false);
+            alertSentMap.put("happiness_warning", false);
         }
 
-        if (pet.getEnergy() <= 10 && pet.getEnergy() > 0) {
-            if (!alertSentMap.get("energy_low") ||
-                    (currentTime - lastAlertTimeMap.get("energy_low") > fiveMinutes)) {
-                sendAlertNotification("Energy Alert!", "Your DigiBuddy is very tired! Let it sleep!");
-                alertSentMap.put("energy_low", true);
-                lastAlertTimeMap.put("energy_low", currentTime);
+        if (pet.getEnergy() <= 25 && pet.getEnergy() > 15) {
+            if (!alertSentMap.get("energy_warning") ||
+                    (currentTime - lastAlertTimeMap.get("energy_warning") > fiveMinutes)) {
+                sendAlertNotification("Energy Warning", "Your DigiBuddy is getting tired! Maybe some rest soon?");
+                alertSentMap.put("energy_warning", true);
+                lastAlertTimeMap.put("energy_warning", currentTime);
             }
         } else {
-            alertSentMap.put("energy_low", false);
+            alertSentMap.put("energy_warning", false);
         }
 
-        if (pet.getCleanliness() <= 10 && pet.getCleanliness() > 0) {
-            if (!alertSentMap.get("cleanliness_low") ||
-                    (currentTime - lastAlertTimeMap.get("cleanliness_low") > fiveMinutes)) {
-                sendAlertNotification("Cleanliness Alert!", "Your DigiBuddy is very dirty! Clean it!");
-                alertSentMap.put("cleanliness_low", true);
-                lastAlertTimeMap.put("cleanliness_low", currentTime);
+        if (pet.getCleanliness() <= 25 && pet.getCleanliness() > 15) {
+            if (!alertSentMap.get("cleanliness_warning") ||
+                    (currentTime - lastAlertTimeMap.get("cleanliness_warning") > fiveMinutes)) {
+                sendAlertNotification("Cleanliness Warning", "Your DigiBuddy is getting dirty! A cleaning would be nice!");
+                alertSentMap.put("cleanliness_warning", true);
+                lastAlertTimeMap.put("cleanliness_warning", currentTime);
             }
         } else {
-            alertSentMap.put("cleanliness_low", false);
+            alertSentMap.put("cleanliness_warning", false);
         }
 
-        // Critical alerts with separate tracking
-        if (pet.getHunger() <= 5 && pet.getHunger() > 0) {
-            if (!alertSentMap.get("hunger_critical") ||
-                    (currentTime - lastAlertTimeMap.get("hunger_critical") > fiveMinutes)) {
-                sendAlertNotification("CRITICAL: Hunger Emergency!", "Your DigiBuddy is starving! Feed it immediately!");
-                alertSentMap.put("hunger_critical", true);
-                lastAlertTimeMap.put("hunger_critical", currentTime);
+        // EMERGENCY ALERTS - 15% threshold
+        if (pet.getHunger() <= 15 && pet.getHunger() > 0) {
+            if (!alertSentMap.get("hunger_emergency") ||
+                    (currentTime - lastAlertTimeMap.get("hunger_emergency") > fiveMinutes)) {
+                sendAlertNotification("🍕 HUNGER EMERGENCY!", "Your DigiBuddy is very hungry! Feed it immediately!");
+                alertSentMap.put("hunger_emergency", true);
+                lastAlertTimeMap.put("hunger_emergency", currentTime);
             }
         } else {
-            alertSentMap.put("hunger_critical", false);
+            alertSentMap.put("hunger_emergency", false);
         }
 
-        if (pet.getHappiness() <= 5 && pet.getHappiness() > 0) {
-            if (!alertSentMap.get("happiness_critical") ||
-                    (currentTime - lastAlertTimeMap.get("happiness_critical") > fiveMinutes)) {
-                sendAlertNotification("CRITICAL: Happiness Emergency!", "Your DigiBuddy is extremely sad! It needs attention!");
-                alertSentMap.put("happiness_critical", true);
-                lastAlertTimeMap.put("happiness_critical", currentTime);
+        if (pet.getHappiness() <= 15 && pet.getHappiness() > 0) {
+            if (!alertSentMap.get("happiness_emergency") ||
+                    (currentTime - lastAlertTimeMap.get("happiness_emergency") > fiveMinutes)) {
+                sendAlertNotification("😢 HAPPINESS EMERGENCY!", "Your DigiBuddy is very sad! Play with it urgently!");
+                alertSentMap.put("happiness_emergency", true);
+                lastAlertTimeMap.put("happiness_emergency", currentTime);
             }
         } else {
-            alertSentMap.put("happiness_critical", false);
+            alertSentMap.put("happiness_emergency", false);
+        }
+
+        if (pet.getEnergy() <= 15 && pet.getEnergy() > 0) {
+            if (!alertSentMap.get("energy_emergency") ||
+                    (currentTime - lastAlertTimeMap.get("energy_emergency") > fiveMinutes)) {
+                sendAlertNotification("😴 ENERGY EMERGENCY!", "Your DigiBuddy is exhausted! Let it sleep immediately!");
+                alertSentMap.put("energy_emergency", true);
+                lastAlertTimeMap.put("energy_emergency", currentTime);
+            }
+        } else {
+            alertSentMap.put("energy_emergency", false);
+        }
+
+        if (pet.getCleanliness() <= 15 && pet.getCleanliness() > 0) {
+            if (!alertSentMap.get("cleanliness_emergency") ||
+                    (currentTime - lastAlertTimeMap.get("cleanliness_emergency") > fiveMinutes)) {
+                sendAlertNotification("🛁 CLEANLINESS EMERGENCY!", "Your DigiBuddy is very dirty! Clean it right away!");
+                alertSentMap.put("cleanliness_emergency", true);
+                lastAlertTimeMap.put("cleanliness_emergency", currentTime);
+            }
+        } else {
+            alertSentMap.put("cleanliness_emergency", false);
         }
     }
 
