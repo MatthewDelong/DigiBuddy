@@ -29,6 +29,11 @@ public class MainActivity extends AppCompatActivity {
     private final Handler uiHandler = new Handler();
     private Runnable uiUpdateRunnable;
 
+    // Add these enums at the top of your MainActivity class
+    enum PetMood {
+        HAPPY, HUNGRY, TIRED, DIRTY, SLEEPING, DEFAULT
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -386,9 +391,41 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Mood detection method
+    private PetMood determinePetMood() {
+        if (!pet.isAlive()) {
+            return PetMood.DEFAULT;
+        }
+
+        if (pet.isSleeping()) {
+            return PetMood.SLEEPING;
+        }
+
+        // Check for critical needs first
+        if (pet.getHunger() < 20) {
+            return PetMood.HUNGRY;
+        }
+        if (pet.getEnergy() < 20) {
+            return PetMood.TIRED;
+        }
+        if (pet.getCleanliness() < 30) {
+            return PetMood.DIRTY;
+        }
+
+        // Then check for happiness
+        if (pet.getHappiness() > 70 && pet.getEnergy() > 50 && pet.getHunger() > 50) {
+            return PetMood.HAPPY;
+        }
+
+        return PetMood.DEFAULT;
+    }
+
+    // Updated pet image method with mood support
     private void updatePetImage() {
         int drawableId = R.drawable.ic_pet_egg;
+        PetMood currentMood = determinePetMood();
 
+        // First determine the base image based on life stage
         if ("baby".equals(pet.getStage())) {
             drawableId = R.drawable.ic_pet_baby;
         } else if ("teen".equals(pet.getStage())) {
@@ -397,8 +434,29 @@ public class MainActivity extends AppCompatActivity {
             drawableId = R.drawable.ic_pet_adult;
         }
 
+        // Override with mood-specific images if available
+        switch (currentMood) {
+            case HAPPY:
+                drawableId = R.drawable.ic_pet_happy;
+                break;
+            case HUNGRY:
+                drawableId = R.drawable.ic_pet_hungry;
+                break;
+            case TIRED:
+            case SLEEPING:
+                drawableId = R.drawable.ic_pet_tired;
+                break;
+            case DIRTY:
+                drawableId = R.drawable.ic_pet_dirty;
+                break;
+            case DEFAULT:
+                // Use the life stage image we already set
+                break;
+        }
+
         petImage.setImageResource(drawableId);
 
+        // Apply visual effects
         if (!pet.isAlive()) {
             petImage.setAlpha(0.5f);
             showMessage("Your DigiBuddy has passed away... Reset to start over.");
@@ -407,6 +465,48 @@ public class MainActivity extends AppCompatActivity {
         } else {
             petImage.setAlpha(1.0f);
         }
+
+        // Update mood message
+        updateMoodMessage(currentMood);
+    }
+
+    // Mood message update method
+    private void updateMoodMessage(PetMood mood) {
+        String message;
+
+        if (!pet.isAlive()) {
+            message = "Your DigiBuddy has passed away... Reset to start over.";
+        } else {
+            switch (mood) {
+                case HAPPY:
+                    message = "I'm so happy! Thank you for taking good care of me! 🎉";
+                    break;
+                case HUNGRY:
+                    message = "I'm really hungry... Can I have some food? 🍕";
+                    break;
+                case TIRED:
+                    message = "I'm feeling very tired... I need some rest 😴";
+                    break;
+                case SLEEPING:
+                    message = "Zzz... I'm sleeping peacefully 💤";
+                    break;
+                case DIRTY:
+                    message = "I feel dirty and uncomfortable... Can you clean me? 🛁";
+                    break;
+                default:
+                    // Default messages based on general state
+                    if (pet.getHappiness() > 70) {
+                        message = "I'm having a great day! Thanks for being awesome!";
+                    } else if (pet.getEnergy() > 80) {
+                        message = "I'm full of energy! Let's do something fun!";
+                    } else {
+                        message = "Hello! I'm doing okay today!";
+                    }
+                    break;
+            }
+        }
+
+        messageText.setText(message);
     }
 
     private void updateButtonStates() {

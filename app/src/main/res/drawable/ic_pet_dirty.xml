@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#4ECDC4"
+        android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2z"/>
+    <!-- Unhappy eyes -->
+    <path
+        android:fillColor="#2C3E50"
+        android:pathData="M9,9C8.45,9 8,8.55 8,8s0.45,-1 1,-1 1,0.45 1,1 -0.45,1 -1,1zM16,8c0,0.55 -0.45,1 -1,1s-1,-0.45 -1,-1 0.45,-1 1,-1 1,0.45 1,1z"/>
+    <!-- Frown -->
+    <path
+        android:fillColor="#2C3E50"
+        android:strokeColor="#2C3E50"
+        android:strokeWidth="1"
+        android:pathData="M8,15c0,0 1.5,-1 4,-1s4,1 4,1"/>
+    <!-- Dirt spots -->
+    <path
+        android:fillColor="#8B4513"
+        android:pathData="M6,6h1v1h-1zM17,17h1v1h-1zM5,12h1v1h-1z"/>
+</vector>
