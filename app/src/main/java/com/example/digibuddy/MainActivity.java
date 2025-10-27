@@ -22,7 +22,7 @@ public class MainActivity extends AppCompatActivity {
 
     private ImageView petImage;
     private ProgressBar hungerBar, happinessBar, energyBar;
-    private TextView hungerText, happinessText, energyText, ageText, messageText, starsLabel;
+    private TextView hungerText, happinessText, energyText, ageText, messageText, starInfoText;
     private Button feedButton, playButton, sleepButton, cleanButton, resetButton;
     private LinearLayout starsContainer;
 
@@ -56,8 +56,8 @@ public class MainActivity extends AppCompatActivity {
         energyText = findViewById(R.id.energyText);
         ageText = findViewById(R.id.ageText);
         messageText = findViewById(R.id.messageText);
+        starInfoText = findViewById(R.id.starInfoText);
         starsContainer = findViewById(R.id.starsContainer);
-        starsLabel = findViewById(R.id.starsLabel);
 
         feedButton = findViewById(R.id.feedButton);
         playButton = findViewById(R.id.playButton);
@@ -156,21 +156,25 @@ public class MainActivity extends AppCompatActivity {
 
         int totalStars = (int) pet.getAge() / 10;
 
-        // Show stars label only if there are stars to display
+        // Update star info text
         if (totalStars > 0) {
-            starsLabel.setVisibility(TextView.VISIBLE);
+            if (totalStars == 1) {
+                starInfoText.setText("🌟 1 milestone");
+            } else {
+                starInfoText.setText("🌟 " + totalStars + " milestones");
+            }
         } else {
-            starsLabel.setVisibility(TextView.GONE);
+            starInfoText.setText(""); // No text when no stars
         }
 
-        // Add stars to the container
+        // Add larger, more visible stars
         for (int i = 0; i < totalStars; i++) {
             ImageView star = new ImageView(this);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    24, // Smaller stars since they're in the stats area
-                    24
+                    36, // Larger stars
+                    36
             );
-            params.setMargins(2, 0, 2, 0); // Tighter spacing
+            params.setMargins(4, 0, 4, 0);
             star.setLayoutParams(params);
             star.setImageResource(R.drawable.ic_gold_star);
             star.setContentDescription("10-day milestone star");

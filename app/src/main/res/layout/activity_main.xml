@@ -162,7 +162,7 @@
                     android:layout_marginStart="8dp" />
             </LinearLayout>
 
-            <!-- Age Stat - Updated with stars on the right -->
+            <!-- Age Stat - Updated with better star layout -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -177,44 +177,46 @@
                     android:textSize="14sp"
                     android:textColor="@color/black" />
 
-                <!-- Age value container with fixed width to align with other stats -->
-                <LinearLayout
+                <!-- Age value with fixed width for alignment -->
+                <TextView
+                    android:id="@+id/ageText"
                     android:layout_width="30dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="end">
+                    android:text="0"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/black"
+                    android:gravity="end" />
 
-                    <TextView
-                        android:id="@+id/ageText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/black" />
-                </LinearLayout>
-
-                <!-- Stars container moved here -->
+                <!-- Stars area with proper spacing -->
                 <LinearLayout
-                    android:id="@+id/starsContainer"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="2"
                     android:orientation="horizontal"
-                    android:gravity="start"
+                    android:gravity="center_vertical"
                     android:layout_marginStart="8dp">
 
-                    <!-- Text label for stars -->
+                    <!-- Star icon and text -->
                     <TextView
-                        android:id="@+id/starsLabel"
+                        android:id="@+id/starInfoText"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="🌟 "
+                        android:text=""
                         android:textSize="12sp"
                         android:textColor="@color/black"
-                        android:visibility="gone" />
+                        android:gravity="center_vertical" />
 
-                    <!-- Stars will be added programmatically here -->
+                    <!-- Stars container -->
+                    <LinearLayout
+                        android:id="@+id/starsContainer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginStart="4dp">
+                        <!-- Stars will be added programmatically -->
+                    </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
