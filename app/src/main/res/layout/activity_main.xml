@@ -39,16 +39,6 @@
                 android:src="@drawable/ic_pet_egg"
                 android:contentDescription="Your DigiBuddy" />
 
-            <!-- NEW: Milestone Stars -->
-            <LinearLayout
-                android:id="@+id/starsContainer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center"
-                android:layout_marginTop="8dp">
-                <!-- Stars will be added programmatically -->
-            </LinearLayout>
         </LinearLayout>
 
         <!-- Stats Container -->
@@ -172,7 +162,7 @@
                     android:layout_marginStart="8dp" />
             </LinearLayout>
 
-            <!-- Age Stat - Simplified without progress bar -->
+            <!-- Age Stat - Updated with stars on the right -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -187,16 +177,45 @@
                     android:textSize="14sp"
                     android:textColor="@color/black" />
 
-                <TextView
-                    android:id="@+id/ageText"
-                    android:layout_width="wrap_content"
+                <!-- Age value container with fixed width to align with other stats -->
+                <LinearLayout
+                    android:layout_width="30dp"
                     android:layout_height="wrap_content"
-                    android:text="0"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/black"
-                    android:gravity="end"
-                    android:layout_marginStart="8dp" />
+                    android:orientation="horizontal"
+                    android:gravity="end">
+
+                    <TextView
+                        android:id="@+id/ageText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/black" />
+                </LinearLayout>
+
+                <!-- Stars container moved here -->
+                <LinearLayout
+                    android:id="@+id/starsContainer"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="2"
+                    android:orientation="horizontal"
+                    android:gravity="start"
+                    android:layout_marginStart="8dp">
+
+                    <!-- Text label for stars -->
+                    <TextView
+                        android:id="@+id/starsLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🌟 "
+                        android:textSize="12sp"
+                        android:textColor="@color/black"
+                        android:visibility="gone" />
+
+                    <!-- Stars will be added programmatically here -->
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
 

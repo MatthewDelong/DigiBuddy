@@ -22,7 +22,7 @@ public class MainActivity extends AppCompatActivity {
 
     private ImageView petImage;
     private ProgressBar hungerBar, happinessBar, energyBar;
-    private TextView hungerText, happinessText, energyText, ageText, messageText;
+    private TextView hungerText, happinessText, energyText, ageText, messageText, starsLabel;
     private Button feedButton, playButton, sleepButton, cleanButton, resetButton;
     private LinearLayout starsContainer;
 
@@ -57,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
         ageText = findViewById(R.id.ageText);
         messageText = findViewById(R.id.messageText);
         starsContainer = findViewById(R.id.starsContainer);
+        starsLabel = findViewById(R.id.starsLabel);
 
         feedButton = findViewById(R.id.feedButton);
         playButton = findViewById(R.id.playButton);
@@ -154,33 +155,26 @@ public class MainActivity extends AppCompatActivity {
         starsContainer.removeAllViews();
 
         int totalStars = (int) pet.getAge() / 10;
-        int maxStarsToShow = 10;
 
-        for (int i = 0; i < Math.min(totalStars, maxStarsToShow); i++) {
+        // Show stars label only if there are stars to display
+        if (totalStars > 0) {
+            starsLabel.setVisibility(TextView.VISIBLE);
+        } else {
+            starsLabel.setVisibility(TextView.GONE);
+        }
+
+        // Add stars to the container
+        for (int i = 0; i < totalStars; i++) {
             ImageView star = new ImageView(this);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    36,
-                    36
+                    24, // Smaller stars since they're in the stats area
+                    24
             );
-            params.setMargins(4, 0, 4, 0);
+            params.setMargins(2, 0, 2, 0); // Tighter spacing
             star.setLayoutParams(params);
             star.setImageResource(R.drawable.ic_gold_star);
             star.setContentDescription("10-day milestone star");
             starsContainer.addView(star);
-        }
-
-        if (totalStars > maxStarsToShow) {
-            TextView extraStars = new TextView(this);
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-            );
-            params.setMargins(8, 0, 0, 0);
-            extraStars.setLayoutParams(params);
-            extraStars.setText("+" + (totalStars - maxStarsToShow));
-            extraStars.setTextSize(14);
-            extraStars.setTextColor(getResources().getColor(R.color.gold, getTheme()));
-            starsContainer.addView(extraStars);
         }
     }
 
