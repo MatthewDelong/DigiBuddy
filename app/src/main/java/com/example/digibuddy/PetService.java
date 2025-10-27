@@ -11,6 +11,8 @@ import android.content.pm.ServiceInfo;
 import android.os.Build;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+import java.util.HashMap;
+import java.util.Map;
 
 public class PetService extends Service {
     private static final long UPDATE_INTERVAL = 60000;
@@ -23,6 +25,10 @@ public class PetService extends Service {
     private PetPreferences petPreferences;
     private NotificationManager notificationManager;
 
+    // NEW: Track which alerts have been sent to prevent duplicates
+    private Map<String, Boolean> alertSentMap;
+    private Map<String, Long> lastAlertTimeMap;
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -30,6 +36,29 @@ public class PetService extends Service {
         petPreferences = new PetPreferences(this);
         notificationManager = getSystemService(NotificationManager.class);
         createNotificationChannels();
+
+        // NEW: Initialize alert tracking
+        alertSentMap = new HashMap<>();
+        lastAlertTimeMap = new HashMap<>();
+        initializeAlertTracking();
+    }
+
+    // NEW: Initialize alert tracking state
+    private void initializeAlertTracking() {
+        alertSentMap.put("hunger_low", false);
+        alertSentMap.put("happiness_low", false);
+        alertSentMap.put("energy_low", false);
+        alertSentMap.put("cleanliness_low", false);
+        alertSentMap.put("hunger_critical", false);
+        alertSentMap.put("happiness_critical", false);
+
+        long currentTime = System.currentTimeMillis();
+        lastAlertTimeMap.put("hunger_low", currentTime);
+        lastAlertTimeMap.put("happiness_low", currentTime);
+        lastAlertTimeMap.put("energy_low", currentTime);
+        lastAlertTimeMap.put("cleanliness_low", currentTime);
+        lastAlertTimeMap.put("hunger_critical", currentTime);
+        lastAlertTimeMap.put("happiness_critical", currentTime);
     }
 
     @Override
@@ -148,6 +177,95 @@ public class PetService extends Service {
         }
     }
 
+    private void checkLowStatsAndNotify() {
+        Pet pet = petPreferences.loadPet();
+
+        if (!pet.isAlive()) {
+            // NEW: Reset all alerts if pet is dead
+            resetAllAlerts();
+            return;
+        }
+
+        long currentTime = System.currentTimeMillis();
+        long fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+        // Check for low stats with cooldown and state tracking
+        if (pet.getHunger() <= 10 && pet.getHunger() > 0) {
+            if (!alertSentMap.get("hunger_low") ||
+                    (currentTime - lastAlertTimeMap.get("hunger_low") > fiveMinutes)) {
+                sendAlertNotification("Hunger Alert!", "Your DigiBuddy is very hungry! Feed it soon!");
+                alertSentMap.put("hunger_low", true);
+                lastAlertTimeMap.put("hunger_low", currentTime);
+            }
+        } else {
+            // Reset the alert state when condition is no longer true
+            alertSentMap.put("hunger_low", false);
+        }
+
+        if (pet.getHappiness() <= 10 && pet.getHappiness() > 0) {
+            if (!alertSentMap.get("happiness_low") ||
+                    (currentTime - lastAlertTimeMap.get("happiness_low") > fiveMinutes)) {
+                sendAlertNotification("Happiness Alert!", "Your DigiBuddy is very sad! Play with it!");
+                alertSentMap.put("happiness_low", true);
+                lastAlertTimeMap.put("happiness_low", currentTime);
+            }
+        } else {
+            alertSentMap.put("happiness_low", false);
+        }
+
+        if (pet.getEnergy() <= 10 && pet.getEnergy() > 0) {
+            if (!alertSentMap.get("energy_low") ||
+                    (currentTime - lastAlertTimeMap.get("energy_low") > fiveMinutes)) {
+                sendAlertNotification("Energy Alert!", "Your DigiBuddy is very tired! Let it sleep!");
+                alertSentMap.put("energy_low", true);
+                lastAlertTimeMap.put("energy_low", currentTime);
+            }
+        } else {
+            alertSentMap.put("energy_low", false);
+        }
+
+        if (pet.getCleanliness() <= 10 && pet.getCleanliness() > 0) {
+            if (!alertSentMap.get("cleanliness_low") ||
+                    (currentTime - lastAlertTimeMap.get("cleanliness_low") > fiveMinutes)) {
+                sendAlertNotification("Cleanliness Alert!", "Your DigiBuddy is very dirty! Clean it!");
+                alertSentMap.put("cleanliness_low", true);
+                lastAlertTimeMap.put("cleanliness_low", currentTime);
+            }
+        } else {
+            alertSentMap.put("cleanliness_low", false);
+        }
+
+        // Critical alerts with separate tracking
+        if (pet.getHunger() <= 5 && pet.getHunger() > 0) {
+            if (!alertSentMap.get("hunger_critical") ||
+                    (currentTime - lastAlertTimeMap.get("hunger_critical") > fiveMinutes)) {
+                sendAlertNotification("CRITICAL: Hunger Emergency!", "Your DigiBuddy is starving! Feed it immediately!");
+                alertSentMap.put("hunger_critical", true);
+                lastAlertTimeMap.put("hunger_critical", currentTime);
+            }
+        } else {
+            alertSentMap.put("hunger_critical", false);
+        }
+
+        if (pet.getHappiness() <= 5 && pet.getHappiness() > 0) {
+            if (!alertSentMap.get("happiness_critical") ||
+                    (currentTime - lastAlertTimeMap.get("happiness_critical") > fiveMinutes)) {
+                sendAlertNotification("CRITICAL: Happiness Emergency!", "Your DigiBuddy is extremely sad! It needs attention!");
+                alertSentMap.put("happiness_critical", true);
+                lastAlertTimeMap.put("happiness_critical", currentTime);
+            }
+        } else {
+            alertSentMap.put("happiness_critical", false);
+        }
+    }
+
+    // NEW: Reset all alerts (called when pet dies or is reset)
+    private void resetAllAlerts() {
+        for (String key : alertSentMap.keySet()) {
+            alertSentMap.put(key, false);
+        }
+    }
+
     private void checkMilestonesInBackground(double previousAge, double currentAge) {
         int previousDays = (int) previousAge;
         int currentDays = (int) currentAge;
@@ -172,38 +290,6 @@ public class PetService extends Service {
                 .build();
 
         notificationManager.notify((int) System.currentTimeMillis() + 1, milestoneNotification);
-    }
-
-    private void checkLowStatsAndNotify() {
-        Pet pet = petPreferences.loadPet();
-
-        if (!pet.isAlive()) {
-            return;
-        }
-
-        if (pet.getHunger() <= 10 && pet.getHunger() > 0) {
-            sendAlertNotification("Hunger Alert!", "Your DigiBuddy is very hungry! Feed it soon!");
-        }
-
-        if (pet.getHappiness() <= 10 && pet.getHappiness() > 0) {
-            sendAlertNotification("Happiness Alert!", "Your DigiBuddy is very sad! Play with it!");
-        }
-
-        if (pet.getEnergy() <= 10 && pet.getEnergy() > 0) {
-            sendAlertNotification("Energy Alert!", "Your DigiBuddy is very tired! Let it sleep!");
-        }
-
-        if (pet.getCleanliness() <= 10 && pet.getCleanliness() > 0) {
-            sendAlertNotification("Cleanliness Alert!", "Your DigiBuddy is very dirty! Clean it!");
-        }
-
-        if (pet.getHunger() <= 5 && pet.getHunger() > 0) {
-            sendAlertNotification("CRITICAL: Hunger Emergency!", "Your DigiBuddy is starving! Feed it immediately!");
-        }
-
-        if (pet.getHappiness() <= 5 && pet.getHappiness() > 0) {
-            sendAlertNotification("CRITICAL: Happiness Emergency!", "Your DigiBuddy is extremely sad! It needs attention!");
-        }
     }
 
     private void sendAlertNotification(String title, String message) {
