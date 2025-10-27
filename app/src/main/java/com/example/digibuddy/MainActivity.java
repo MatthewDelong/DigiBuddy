@@ -21,8 +21,8 @@ public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 100;
 
     private ImageView petImage;
-    private ProgressBar hungerBar, happinessBar, energyBar;
-    private TextView hungerText, happinessText, energyText, ageText, messageText, starInfoText;
+    private ProgressBar hungerBar, happinessBar, energyBar, cleanlinessBar;
+    private TextView hungerText, happinessText, energyText, cleanlinessText, ageText, messageText, starInfoText;
     private Button feedButton, playButton, sleepButton, cleanButton, resetButton;
     private LinearLayout starsContainer;
 
@@ -50,10 +50,12 @@ public class MainActivity extends AppCompatActivity {
         hungerBar = findViewById(R.id.hungerBar);
         happinessBar = findViewById(R.id.happinessBar);
         energyBar = findViewById(R.id.energyBar);
+        cleanlinessBar = findViewById(R.id.cleanlinessBar);
 
         hungerText = findViewById(R.id.hungerText);
         happinessText = findViewById(R.id.happinessText);
         energyText = findViewById(R.id.energyText);
+        cleanlinessText = findViewById(R.id.cleanlinessText);
         ageText = findViewById(R.id.ageText);
         messageText = findViewById(R.id.messageText);
         starInfoText = findViewById(R.id.starInfoText);
@@ -356,10 +358,12 @@ public class MainActivity extends AppCompatActivity {
         hungerBar.setProgress((int) pet.getHunger());
         happinessBar.setProgress((int) pet.getHappiness());
         energyBar.setProgress((int) pet.getEnergy());
+        cleanlinessBar.setProgress((int) pet.getCleanliness());
 
         hungerText.setText(String.valueOf((int) pet.getHunger()));
         happinessText.setText(String.valueOf((int) pet.getHappiness()));
         energyText.setText(String.valueOf((int) pet.getEnergy()));
+        cleanlinessText.setText(String.valueOf((int) pet.getCleanliness()));
         ageText.setText(String.valueOf((int) pet.getAge()));
 
         updateStarsDisplay();
