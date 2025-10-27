@@ -32,8 +32,8 @@ DigiBuddy is an Android virtual pet care application where users can nurture and
 
 ### 🔔 Smart Notifications
 
-- **Low Stat Alerts**: Notifications when stats drop below 10%
-- **Critical Alerts**: Emergency notifications below 5%
+- **Low Stat Alerts**: Notifications when stats drop below 25%
+- **Critical Alerts**: Emergency notifications below 15%
 - **No Spam System**: 5-minute cooldown between duplicate alerts
 - **Background Updates**: Pet stats update even when app is closed
 - **Foreground Service**: Persistent care with system notifications
