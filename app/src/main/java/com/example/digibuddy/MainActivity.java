@@ -29,6 +29,16 @@ public class MainActivity extends AppCompatActivity {
     private final Handler uiHandler = new Handler();
     private Runnable uiUpdateRunnable;
 
+    // Animation handlers
+    private Handler animationHandler;
+    private Runnable blinkRunnable;
+    private Runnable lookAroundRunnable;
+
+    // Animation constants
+    private static final long BLINK_INTERVAL = 3000; // 3 seconds between blinks
+    private static final long BLINK_DURATION = 200; // 200ms blink duration
+    private static final long LOOK_AROUND_INTERVAL = 8000; // 8 seconds between look around
+
     // Add these enums at the top of your MainActivity class
     enum PetMood {
         HAPPY, HUNGRY, TIRED, DIRTY, SLEEPING, DEFAULT
@@ -45,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
 
         setupButtons();
         startUIUpdates();
+        initializeAnimations();
 
         // Request notification permission first, then start service
         requestNotificationPermission();
@@ -71,6 +82,123 @@ public class MainActivity extends AppCompatActivity {
         sleepButton = findViewById(R.id.sleepButton);
         cleanButton = findViewById(R.id.cleanButton);
         resetButton = findViewById(R.id.resetButton);
+    }
+
+    // Animation initialization
+    private void initializeAnimations() {
+        animationHandler = new Handler();
+        startBlinking();
+        startLookingAround();
+    }
+
+    // Blinking animation
+    private void startBlinking() {
+        blinkRunnable = new Runnable() {
+            @Override
+            public void run() {
+                blinkEyes();
+                animationHandler.postDelayed(this, BLINK_INTERVAL);
+            }
+        };
+        animationHandler.postDelayed(blinkRunnable, BLINK_INTERVAL);
+    }
+
+    private void blinkEyes() {
+        // Don't blink if pet is dead, sleeping, or an egg
+        if (!pet.isAlive() || pet.isSleeping() || "egg".equals(pet.getStage())) {
+            return;
+        }
+
+        int currentDrawableId = getCurrentDrawableId();
+        int closedEyesDrawableId = getClosedEyesDrawableId(currentDrawableId);
+
+        if (closedEyesDrawableId != 0) {
+            // Show closed eyes
+            petImage.setImageResource(closedEyesDrawableId);
+
+            // Return to open eyes after blink duration
+            animationHandler.postDelayed(() -> {
+                if (pet.isAlive() && !isFinishing()) {
+                    updatePetImage(); // This will set the correct open-eyed image
+                }
+            }, BLINK_DURATION);
+        }
+    }
+
+    private int getClosedEyesDrawableId(int openEyesDrawableId) {
+        if (openEyesDrawableId == R.drawable.ic_pet_happy) {
+            return R.drawable.ic_pet_happy_closed;
+        } else if (openEyesDrawableId == R.drawable.ic_pet_hungry) {
+            return R.drawable.ic_pet_hungry_closed;
+        } else if (openEyesDrawableId == R.drawable.ic_pet_tired) {
+            return R.drawable.ic_pet_tired_closed;
+        } else if (openEyesDrawableId == R.drawable.ic_pet_dirty) {
+            return R.drawable.ic_pet_dirty_closed;
+        } else if (openEyesDrawableId == R.drawable.ic_pet_baby) {
+            return R.drawable.ic_pet_baby_closed;
+        } else if (openEyesDrawableId == R.drawable.ic_pet_teen) {
+            return R.drawable.ic_pet_teen_closed;
+        } else if (openEyesDrawableId == R.drawable.ic_pet_adult) {
+            return R.drawable.ic_pet_adult_closed;
+        } else {
+            return 0; // No closed eyes version available
+        }
+    }
+
+    private int getCurrentDrawableId() {
+        // Determine which drawable is currently displayed
+        PetMood currentMood = determinePetMood();
+
+        if ("egg".equals(pet.getStage())) {
+            return R.drawable.ic_pet_egg;
+        } else if ("baby".equals(pet.getStage())) {
+            return R.drawable.ic_pet_baby;
+        } else if ("teen".equals(pet.getStage())) {
+            return R.drawable.ic_pet_teen;
+        } else if ("adult".equals(pet.getStage())) {
+            return R.drawable.ic_pet_adult;
+        }
+
+        // Mood overrides
+        switch (currentMood) {
+            case HAPPY: return R.drawable.ic_pet_happy;
+            case HUNGRY: return R.drawable.ic_pet_hungry;
+            case TIRED:
+            case SLEEPING: return R.drawable.ic_pet_tired;
+            case DIRTY: return R.drawable.ic_pet_dirty;
+            default: return R.drawable.ic_pet_adult;
+        }
+    }
+
+    // Looking around animation (subtle movements)
+    private void startLookingAround() {
+        lookAroundRunnable = new Runnable() {
+            private int lookState = 0;
+
+            @Override
+            public void run() {
+                if (pet.isAlive() && !pet.isSleeping() && !"egg".equals(pet.getStage())) {
+                    animatePupils(lookState);
+                    lookState = (lookState + 1) % 4; // Cycle through 4 look states
+                }
+                animationHandler.postDelayed(this, LOOK_AROUND_INTERVAL);
+            }
+        };
+        animationHandler.postDelayed(lookAroundRunnable, LOOK_AROUND_INTERVAL);
+    }
+
+    private void animatePupils(int lookState) {
+        // Simple scale animation to simulate looking around
+        petImage.animate()
+                .scaleX(1.02f)
+                .scaleY(1.02f)
+                .setDuration(500)
+                .withEndAction(() -> petImage.animate()
+                        .scaleX(1.0f)
+                        .scaleY(1.0f)
+                        .setDuration(500)
+                        .start())
+                .start();
     }
 
     private void loadPet() {
@@ -586,6 +714,19 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         loadPet();
+        if (animationHandler != null) {
+            startBlinking();
+            startLookingAround();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (animationHandler != null) {
+            animationHandler.removeCallbacks(blinkRunnable);
+            animationHandler.removeCallbacks(lookAroundRunnable);
+        }
     }
 
     @Override
@@ -593,6 +734,10 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         if (uiHandler != null && uiUpdateRunnable != null) {
             uiHandler.removeCallbacks(uiUpdateRunnable);
+        }
+        if (animationHandler != null) {
+            animationHandler.removeCallbacks(blinkRunnable);
+            animationHandler.removeCallbacks(lookAroundRunnable);
         }
     }
 }

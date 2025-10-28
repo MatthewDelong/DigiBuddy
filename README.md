@@ -56,6 +56,13 @@ DigiBuddy is an Android virtual pet care application where users can nurture and
 - **PetPreferences**: Data persistence using SharedPreferences
 - **Pet Model**: Data structure for pet attributes, behaviors, and milestone tracking
 
+### Animation System
+
+- **Blink Engine**: Separate animation handler for smooth eye-blinking effects
+- **Mood-Based Rendering**: Dynamic image switching based on pet state and needs
+- **Lifecycle Integration**: Proper animation management across app states
+- **Vector Drawables**: Complete set of open and closed-eye states for all pet variations
+
 ### Key Technical Features
 
 - **Foreground Service**: Ensures pet care continues in background
@@ -159,6 +166,17 @@ DigiBuddy is an Android virtual pet care application where users can nurture and
 - Clean: Cleanliness +100, Happiness +10
 
 - Sleep: Toggles sleeping state with significant energy benefits
+
+## Animation System
+- Blink Interval: Every 3 seconds
+
+- Blink Duration: 200 milliseconds
+
+- Look Around: Every 8 seconds with subtle scale animations
+
+- Mood Detection: Real-time stat analysis every UI update
+
+- Smart Control: No animations for eggs, sleeping, or dead pets
 
 ## Aging System
 - 1 real day = 1 age point (1440 minutes of real time)

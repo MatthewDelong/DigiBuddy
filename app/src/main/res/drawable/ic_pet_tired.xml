@@ -14,6 +14,10 @@
         android:strokeLineCap="round"
         android:strokeWidth="1.5"
         android:strokeColor="#2C3E50"/>
+    <!-- Pupils -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M9.5,8.8a0.3,0.3 0,1 0,0.6 0.3,0.3 0,0 0,-0.6zM15.5,8.8a0.3,0.3 0,1 0,0.6 0.3,0.3 0,0 0,-0.6z"/>
     <!-- Zzz for sleep -->
     <path
         android:fillColor="#2C3E50"

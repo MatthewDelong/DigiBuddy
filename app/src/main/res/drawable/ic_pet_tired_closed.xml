@@ -7,19 +7,17 @@
     <path
         android:fillColor="#4ECDC4"
         android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2z"/>
-    <!-- Tired eyes -->
+    <!-- Closed eyes (tired) -->
     <path
         android:fillColor="#2C3E50"
-        android:pathData="M9,9L7,9M17,9L15,9"
-        android:strokeLineCap="round"
+        android:strokeColor="#2C3E50"
         android:strokeWidth="1.5"
-        android:strokeColor="#2C3E50"/>
-    <!-- Pupils -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M8.5,9.2a0.3,0.3 0,1 0,0.6 0.3,0.3 0,0 0,-0.6zM16.5,9.2a0.3,0.3 0,1 0,0.6 0.3,0.3 0,0 0,-0.6z"/>
-    <!-- Open mouth (hungry) -->
+        android:pathData="M8,9.5L10,9.5M14,9.5L16,9.5"/>
+    <!-- Zzz for sleep - KEEP THE SAME -->
     <path
         android:fillColor="#2C3E50"
-        android:pathData="M10,14h4c0.55,0 1,0.45 1,1v1c0,0.55 -0.45,1 -1,1h-4c-0.55,0 -1,-0.45 -1,-1v-1c0,-0.55 0.45,-1 1,-1z"/>
+        android:pathData="M9,16l1,-1 1,1 1,-1M13,16l1,-1 1,1"
+        android:strokeLineCap="round"
+        android:strokeWidth="1"
+        android:strokeColor="#2C3E50"/>
 </vector>
