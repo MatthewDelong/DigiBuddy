@@ -29,20 +29,22 @@ public class MainActivity extends AppCompatActivity {
     private final Handler uiHandler = new Handler();
     private Runnable uiUpdateRunnable;
 
+    // Mood enum - SAFE TO ADD
+    enum PetMood {
+        HAPPY, HUNGRY, TIRED, DIRTY, SLEEPING, DEFAULT
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Initialize views first
         initializeViews();
         petPreferences = new PetPreferences(this);
 
-        // Load pet with error handling
         try {
             loadPet();
         } catch (Exception e) {
-            // If loading fails, create a fresh pet
             pet = new Pet();
             petPreferences.savePet(pet);
             showMessage("Welcome to DigiBuddy! A new pet has arrived!");
@@ -77,7 +79,7 @@ public class MainActivity extends AppCompatActivity {
             resetButton = findViewById(R.id.resetButton);
         } catch (Exception e) {
             Toast.makeText(this, "Error initializing views", Toast.LENGTH_LONG).show();
-            throw e; // Re-throw to see the actual error
+            throw e;
         }
     }
 
@@ -85,38 +87,28 @@ public class MainActivity extends AppCompatActivity {
         try {
             pet = petPreferences.loadPet();
 
-            // Calculate time passed since last update
             long timePassed = System.currentTimeMillis() - pet.getLastUpdate();
             long minutesPassed = timePassed / (1000 * 60);
 
-            // Check if this is a fresh pet (all stats at starting values)
             boolean isFreshPet = pet.getHunger() == 100 &&
                     pet.getHappiness() == 100 &&
                     pet.getEnergy() == 100 &&
                     pet.getAge() == 0 &&
                     pet.getCleanliness() == 100;
 
-            // Apply background degradation ONLY if:
-            // 1. More than 1 minute has passed AND
-            // 2. Pet is alive AND
-            // 3. This is NOT a fresh pet
             if (minutesPassed > 1 && pet.isAlive() && !isFreshPet) {
                 double hungerLoss = minutesPassed * 0.1;
                 double happinessLoss = minutesPassed * 0.05;
                 double energyLoss = minutesPassed * 0.05;
                 double cleanlinessLoss = minutesPassed * 0.02;
 
-                // Calculate age based on days passed (1440 minutes = 1 day)
                 double daysPassed = minutesPassed / 1440.0;
                 double previousAge = pet.getAge();
                 pet.setAge(pet.getAge() + daysPassed);
 
-                // Check for milestone achievements
                 checkMilestones(previousAge, pet.getAge());
 
-                // If sleeping, apply sleep benefits
                 if (pet.isSleeping()) {
-                    // While sleeping: energy restores, hunger decreases slower
                     double energyGain = minutesPassed * 0.5;
                     pet.setEnergy(Math.min(100, pet.getEnergy() + energyGain));
                     hungerLoss *= 0.3;
@@ -142,9 +134,7 @@ public class MainActivity extends AppCompatActivity {
                         showMessage("Welcome back! Your DigiBuddy missed you!");
                     }
                 }
-            }
-            // If it's a fresh pet, update the lastUpdate time to prevent immediate degradation
-            else if (isFreshPet) {
+            } else if (isFreshPet) {
                 pet.setLastUpdate(System.currentTimeMillis());
                 petPreferences.savePet(pet);
             }
@@ -152,7 +142,6 @@ public class MainActivity extends AppCompatActivity {
             updateUI();
             updateSleepButtonText();
         } catch (Exception e) {
-            // If anything fails, create a fresh pet
             pet = new Pet();
             petPreferences.savePet(pet);
             updateUI();
@@ -164,7 +153,6 @@ public class MainActivity extends AppCompatActivity {
             int previousDays = (int) previousAge;
             int currentDays = (int) currentAge;
 
-            // Check if we crossed any 10-day milestone
             if (currentDays > previousDays && currentDays % 10 == 0) {
                 String milestoneMessage = "🎉 Milestone reached! Your DigiBuddy is now " + currentDays + " days old!";
                 showMessage(milestoneMessage);
@@ -181,7 +169,6 @@ public class MainActivity extends AppCompatActivity {
 
             int totalStars = (int) pet.getAge() / 10;
 
-            // Update star info text
             if (totalStars > 0) {
                 if (totalStars == 1) {
                     starInfoText.setText("🌟 1 milestone");
@@ -189,10 +176,9 @@ public class MainActivity extends AppCompatActivity {
                     starInfoText.setText("🌟 " + totalStars + " milestones");
                 }
             } else {
-                starInfoText.setText(""); // No text when no stars
+                starInfoText.setText("");
             }
 
-            // Add larger, more visible stars
             for (int i = 0; i < totalStars; i++) {
                 ImageView star = new ImageView(this);
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(36, 36);
@@ -399,26 +385,94 @@ public class MainActivity extends AppCompatActivity {
             ageText.setText(String.valueOf((int) pet.getAge()));
 
             updateStarsDisplay();
-            updatePetImage();
+            updatePetImage(); // Now with mood support
             updateButtonStates();
             checkLowStats();
         } catch (Exception e) {
-            // If UI update fails, try to recover
             Toast.makeText(this, "UI update error, recovering...", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // === SAFE MOOD SYSTEM ADDITION ===
+
+    private PetMood determinePetMood() {
+        try {
+            if (!pet.isAlive()) {
+                return PetMood.DEFAULT;
+            }
+
+            // EGG STAGE: Always show egg, no moods
+            if ("egg".equals(pet.getStage())) {
+                return PetMood.DEFAULT;
+            }
+
+            if (pet.isSleeping()) {
+                return PetMood.SLEEPING;
+            }
+
+            // Check for critical needs first
+            if (pet.getHunger() < 20) {
+                return PetMood.HUNGRY;
+            }
+            if (pet.getEnergy() < 20) {
+                return PetMood.TIRED;
+            }
+            if (pet.getCleanliness() < 30) {
+                return PetMood.DIRTY;
+            }
+
+            // Then check for happiness
+            if (pet.getHappiness() > 70 && pet.getEnergy() > 50 && pet.getHunger() > 50) {
+                return PetMood.HAPPY;
+            }
+
+            return PetMood.DEFAULT;
+        } catch (Exception e) {
+            return PetMood.DEFAULT; // Safe fallback
         }
     }
 
     private void updatePetImage() {
         try {
             int drawableId = R.drawable.ic_pet_egg;
+            PetMood currentMood = determinePetMood();
 
-            // Simple life stage detection - NO MOODS for now
-            if ("baby".equals(pet.getStage())) {
-                drawableId = R.drawable.ic_pet_baby;
-            } else if ("teen".equals(pet.getStage())) {
-                drawableId = R.drawable.ic_pet_teen;
-            } else if ("adult".equals(pet.getStage())) {
-                drawableId = R.drawable.ic_pet_adult;
+            // EGG STAGE: Always show egg, ignore moods
+            if ("egg".equals(pet.getStage())) {
+                drawableId = R.drawable.ic_pet_egg;
+            }
+            // OTHER STAGES: Use life stage as base, override with moods when appropriate
+            else {
+                // First determine the base image based on life stage
+                if ("baby".equals(pet.getStage())) {
+                    drawableId = R.drawable.ic_pet_baby;
+                } else if ("teen".equals(pet.getStage())) {
+                    drawableId = R.drawable.ic_pet_teen;
+                } else if ("adult".equals(pet.getStage())) {
+                    drawableId = R.drawable.ic_pet_adult;
+                }
+
+                // Override with mood-specific images if available (but not for egg stage)
+                // SAFE: Each mood has fallback to life stage image
+                switch (currentMood) {
+                    case HAPPY:
+                        // Only use happy if the drawable exists
+                        drawableId = R.drawable.ic_pet_happy;
+                        break;
+                    case HUNGRY:
+                        drawableId = R.drawable.ic_pet_hungry;
+                        break;
+                    case TIRED:
+                    case SLEEPING:
+                        drawableId = R.drawable.ic_pet_tired;
+                        break;
+                    case DIRTY:
+                        drawableId = R.drawable.ic_pet_dirty;
+                        break;
+                    case DEFAULT:
+                        // Use the life stage image we already set
+                        break;
+                }
             }
 
             petImage.setImageResource(drawableId);
@@ -432,8 +486,11 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 petImage.setAlpha(1.0f);
             }
+
+            // Update mood message
+            updateMoodMessage(currentMood);
         } catch (Exception e) {
-            // If image setting fails, use a default
+            // If anything fails, fall back to basic egg
             try {
                 petImage.setImageResource(R.drawable.ic_pet_egg);
             } catch (Exception ex) {
@@ -442,18 +499,73 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void updateMoodMessage(PetMood mood) {
+        try {
+            String message;
+
+            if (!pet.isAlive()) {
+                message = "Your DigiBuddy has passed away... Reset to start over.";
+            } else if ("egg".equals(pet.getStage())) {
+                message = "I'm still an egg! Keep taking care of me! 🥚";
+            } else {
+                switch (mood) {
+                    case HAPPY:
+                        message = "I'm so happy! Thank you for taking good care of me! 🎉";
+                        break;
+                    case HUNGRY:
+                        message = "I'm really hungry... Can I have some food? 🍕";
+                        break;
+                    case TIRED:
+                        message = "I'm feeling very tired... I need some rest 😴";
+                        break;
+                    case SLEEPING:
+                        message = "Zzz... I'm sleeping peacefully 💤";
+                        break;
+                    case DIRTY:
+                        message = "I feel dirty and uncomfortable... Can you clean me? 🛁";
+                        break;
+                    default:
+                        // Default messages based on general state
+                        if (pet.getHappiness() > 70) {
+                            message = "I'm having a great day! Thanks for being awesome!";
+                        } else if (pet.getEnergy() > 80) {
+                            message = "I'm full of energy! Let's do something fun!";
+                        } else {
+                            message = "Hello! I'm doing okay today!";
+                        }
+                        break;
+                }
+            }
+
+            messageText.setText(message);
+        } catch (Exception e) {
+            // Ignore message errors
+        }
+    }
+
     private void checkLowStats() {
         if (!pet.isAlive()) return;
 
-        // Simple alerts without mood dependencies
-        if (pet.getHunger() <= 25 && pet.getHunger() > 0) {
-            showMessage("Your DigiBuddy needs food!");
-        } else if (pet.getHappiness() <= 25 && pet.getHappiness() > 0) {
-            showMessage("Your DigiBuddy wants to play!");
-        } else if (pet.getEnergy() <= 25 && pet.getEnergy() > 0) {
-            showMessage("Your DigiBuddy needs rest!");
-        } else if (pet.getCleanliness() <= 25 && pet.getCleanliness() > 0) {
-            showMessage("Your DigiBuddy needs cleaning!");
+        // Warning alerts at 25%
+        if (pet.getHunger() <= 25 && pet.getHunger() > 15) {
+            showMessage("🍕 Your DigiBuddy is getting hungry! Consider feeding soon.");
+        } else if (pet.getHappiness() <= 25 && pet.getHappiness() > 15) {
+            showMessage("😢 Your DigiBuddy is feeling sad! Some playtime would help!");
+        } else if (pet.getEnergy() <= 25 && pet.getEnergy() > 15) {
+            showMessage("😴 Your DigiBuddy is getting tired! Maybe some rest soon?");
+        } else if (pet.getCleanliness() <= 25 && pet.getCleanliness() > 15) {
+            showMessage("🛁 Your DigiBuddy is getting dirty! A cleaning would be nice!");
+        }
+
+        // Emergency alerts at 15%
+        else if (pet.getHunger() <= 15 && pet.getHunger() > 0) {
+            showMessage("⚠️ Your DigiBuddy is very hungry! Feed it now!");
+        } else if (pet.getHappiness() <= 15 && pet.getHappiness() > 0) {
+            showMessage("⚠️ Your DigiBuddy is very sad! Play with it urgently!");
+        } else if (pet.getEnergy() <= 15 && pet.getEnergy() > 0) {
+            showMessage("⚠️ Your DigiBuddy is exhausted! Let it sleep immediately!");
+        } else if (pet.getCleanliness() <= 15 && pet.getCleanliness() > 0) {
+            showMessage("⚠️ Your DigiBuddy is very dirty! Clean it right away!");
         }
     }
 
