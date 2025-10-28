@@ -34,153 +34,176 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Initialize views first
         initializeViews();
         petPreferences = new PetPreferences(this);
-        loadPet();
+
+        // Load pet with error handling
+        try {
+            loadPet();
+        } catch (Exception e) {
+            // If loading fails, create a fresh pet
+            pet = new Pet();
+            petPreferences.savePet(pet);
+            showMessage("Welcome to DigiBuddy! A new pet has arrived!");
+        }
 
         setupButtons();
         startUIUpdates();
-
-        // Request notification permission first, then start service
         requestNotificationPermission();
     }
 
     private void initializeViews() {
-        petImage = findViewById(R.id.petImage);
-        hungerBar = findViewById(R.id.hungerBar);
-        happinessBar = findViewById(R.id.happinessBar);
-        energyBar = findViewById(R.id.energyBar);
-        cleanlinessBar = findViewById(R.id.cleanlinessBar);
+        try {
+            petImage = findViewById(R.id.petImage);
+            hungerBar = findViewById(R.id.hungerBar);
+            happinessBar = findViewById(R.id.happinessBar);
+            energyBar = findViewById(R.id.energyBar);
+            cleanlinessBar = findViewById(R.id.cleanlinessBar);
 
-        hungerText = findViewById(R.id.hungerText);
-        happinessText = findViewById(R.id.happinessText);
-        energyText = findViewById(R.id.energyText);
-        cleanlinessText = findViewById(R.id.cleanlinessText);
-        ageText = findViewById(R.id.ageText);
-        messageText = findViewById(R.id.messageText);
-        starInfoText = findViewById(R.id.starInfoText);
-        starsContainer = findViewById(R.id.starsContainer);
+            hungerText = findViewById(R.id.hungerText);
+            happinessText = findViewById(R.id.happinessText);
+            energyText = findViewById(R.id.energyText);
+            cleanlinessText = findViewById(R.id.cleanlinessText);
+            ageText = findViewById(R.id.ageText);
+            messageText = findViewById(R.id.messageText);
+            starInfoText = findViewById(R.id.starInfoText);
+            starsContainer = findViewById(R.id.starsContainer);
 
-        feedButton = findViewById(R.id.feedButton);
-        playButton = findViewById(R.id.playButton);
-        sleepButton = findViewById(R.id.sleepButton);
-        cleanButton = findViewById(R.id.cleanButton);
-        resetButton = findViewById(R.id.resetButton);
+            feedButton = findViewById(R.id.feedButton);
+            playButton = findViewById(R.id.playButton);
+            sleepButton = findViewById(R.id.sleepButton);
+            cleanButton = findViewById(R.id.cleanButton);
+            resetButton = findViewById(R.id.resetButton);
+        } catch (Exception e) {
+            Toast.makeText(this, "Error initializing views", Toast.LENGTH_LONG).show();
+            throw e; // Re-throw to see the actual error
+        }
     }
 
     private void loadPet() {
-        pet = petPreferences.loadPet();
+        try {
+            pet = petPreferences.loadPet();
 
-        // Calculate time passed since last update
-        long timePassed = System.currentTimeMillis() - pet.getLastUpdate();
-        long minutesPassed = timePassed / (1000 * 60);
+            // Calculate time passed since last update
+            long timePassed = System.currentTimeMillis() - pet.getLastUpdate();
+            long minutesPassed = timePassed / (1000 * 60);
 
-        // Check if this is a fresh pet (all stats at starting values)
-        boolean isFreshPet = pet.getHunger() == 100 &&
-                pet.getHappiness() == 100 &&
-                pet.getEnergy() == 100 &&
-                pet.getAge() == 0 &&
-                pet.getCleanliness() == 100;
+            // Check if this is a fresh pet (all stats at starting values)
+            boolean isFreshPet = pet.getHunger() == 100 &&
+                    pet.getHappiness() == 100 &&
+                    pet.getEnergy() == 100 &&
+                    pet.getAge() == 0 &&
+                    pet.getCleanliness() == 100;
 
-        // Apply background degradation ONLY if:
-        // 1. More than 1 minute has passed AND
-        // 2. Pet is alive AND
-        // 3. This is NOT a fresh pet
-        if (minutesPassed > 1 && pet.isAlive() && !isFreshPet) {
-            double hungerLoss = minutesPassed * 0.1;
-            double happinessLoss = minutesPassed * 0.05;
-            double energyLoss = minutesPassed * 0.05;
-            double cleanlinessLoss = minutesPassed * 0.02;
+            // Apply background degradation ONLY if:
+            // 1. More than 1 minute has passed AND
+            // 2. Pet is alive AND
+            // 3. This is NOT a fresh pet
+            if (minutesPassed > 1 && pet.isAlive() && !isFreshPet) {
+                double hungerLoss = minutesPassed * 0.1;
+                double happinessLoss = minutesPassed * 0.05;
+                double energyLoss = minutesPassed * 0.05;
+                double cleanlinessLoss = minutesPassed * 0.02;
 
-            // Calculate age based on days passed (1440 minutes = 1 day)
-            double daysPassed = minutesPassed / 1440.0;
-            double previousAge = pet.getAge();
-            pet.setAge(pet.getAge() + daysPassed);
+                // Calculate age based on days passed (1440 minutes = 1 day)
+                double daysPassed = minutesPassed / 1440.0;
+                double previousAge = pet.getAge();
+                pet.setAge(pet.getAge() + daysPassed);
 
-            // Check for milestone achievements
-            checkMilestones(previousAge, pet.getAge());
+                // Check for milestone achievements
+                checkMilestones(previousAge, pet.getAge());
 
-            // If sleeping, apply sleep benefits
-            if (pet.isSleeping()) {
-                // While sleeping: energy restores, hunger decreases slower
-                double energyGain = minutesPassed * 0.5;
-                pet.setEnergy(Math.min(100, pet.getEnergy() + energyGain));
-                hungerLoss *= 0.3;
-                happinessLoss *= 0.5;
-                cleanlinessLoss *= 0.5;
-                energyLoss = 0;
-            }
-
-            pet.setHunger(Math.max(0, pet.getHunger() - hungerLoss));
-            pet.setHappiness(Math.max(0, pet.getHappiness() - happinessLoss));
-            pet.setEnergy(Math.max(0, pet.getEnergy() - energyLoss));
-            pet.setCleanliness(Math.max(0, pet.getCleanliness() - cleanlinessLoss));
-
-            pet.updateStage();
-            pet.checkDeath();
-            pet.setLastUpdate(System.currentTimeMillis());
-            petPreferences.savePet(pet);
-
-            if (minutesPassed > 10) {
+                // If sleeping, apply sleep benefits
                 if (pet.isSleeping()) {
-                    showMessage("Welcome back! Your DigiBuddy is still sleeping... Zzz");
-                } else {
-                    showMessage("Welcome back! Your DigiBuddy missed you!");
+                    // While sleeping: energy restores, hunger decreases slower
+                    double energyGain = minutesPassed * 0.5;
+                    pet.setEnergy(Math.min(100, pet.getEnergy() + energyGain));
+                    hungerLoss *= 0.3;
+                    happinessLoss *= 0.5;
+                    cleanlinessLoss *= 0.5;
+                    energyLoss = 0;
+                }
+
+                pet.setHunger(Math.max(0, pet.getHunger() - hungerLoss));
+                pet.setHappiness(Math.max(0, pet.getHappiness() - happinessLoss));
+                pet.setEnergy(Math.max(0, pet.getEnergy() - energyLoss));
+                pet.setCleanliness(Math.max(0, pet.getCleanliness() - cleanlinessLoss));
+
+                pet.updateStage();
+                pet.checkDeath();
+                pet.setLastUpdate(System.currentTimeMillis());
+                petPreferences.savePet(pet);
+
+                if (minutesPassed > 10) {
+                    if (pet.isSleeping()) {
+                        showMessage("Welcome back! Your DigiBuddy is still sleeping... Zzz");
+                    } else {
+                        showMessage("Welcome back! Your DigiBuddy missed you!");
+                    }
                 }
             }
-        }
-        // If it's a fresh pet, update the lastUpdate time to prevent immediate degradation
-        else if (isFreshPet) {
-            pet.setLastUpdate(System.currentTimeMillis());
-            petPreferences.savePet(pet);
-        }
+            // If it's a fresh pet, update the lastUpdate time to prevent immediate degradation
+            else if (isFreshPet) {
+                pet.setLastUpdate(System.currentTimeMillis());
+                petPreferences.savePet(pet);
+            }
 
-        updateUI();
-        updateSleepButtonText();
+            updateUI();
+            updateSleepButtonText();
+        } catch (Exception e) {
+            // If anything fails, create a fresh pet
+            pet = new Pet();
+            petPreferences.savePet(pet);
+            updateUI();
+        }
     }
 
     private void checkMilestones(double previousAge, double currentAge) {
-        int previousDays = (int) previousAge;
-        int currentDays = (int) currentAge;
+        try {
+            int previousDays = (int) previousAge;
+            int currentDays = (int) currentAge;
 
-        // Check if we crossed any 10-day milestone
-        if (currentDays > previousDays && currentDays % 10 == 0) {
-            String milestoneMessage = "🎉 Milestone reached! Your DigiBuddy is now " + currentDays + " days old!";
-            showMessage(milestoneMessage);
-
-            // Update stars display
-            updateStarsDisplay();
+            // Check if we crossed any 10-day milestone
+            if (currentDays > previousDays && currentDays % 10 == 0) {
+                String milestoneMessage = "🎉 Milestone reached! Your DigiBuddy is now " + currentDays + " days old!";
+                showMessage(milestoneMessage);
+                updateStarsDisplay();
+            }
+        } catch (Exception e) {
+            // Ignore milestone errors
         }
     }
 
     private void updateStarsDisplay() {
-        starsContainer.removeAllViews();
+        try {
+            starsContainer.removeAllViews();
 
-        int totalStars = (int) pet.getAge() / 10;
+            int totalStars = (int) pet.getAge() / 10;
 
-        // Update star info text
-        if (totalStars > 0) {
-            if (totalStars == 1) {
-                starInfoText.setText("🌟 1 milestone");
+            // Update star info text
+            if (totalStars > 0) {
+                if (totalStars == 1) {
+                    starInfoText.setText("🌟 1 milestone");
+                } else {
+                    starInfoText.setText("🌟 " + totalStars + " milestones");
+                }
             } else {
-                starInfoText.setText("🌟 " + totalStars + " milestones");
+                starInfoText.setText(""); // No text when no stars
             }
-        } else {
-            starInfoText.setText(""); // No text when no stars
-        }
 
-        // Add larger, more visible stars
-        for (int i = 0; i < totalStars; i++) {
-            ImageView star = new ImageView(this);
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    36, // Larger stars
-                    36
-            );
-            params.setMargins(4, 0, 4, 0);
-            star.setLayoutParams(params);
-            star.setImageResource(R.drawable.ic_gold_star);
-            star.setContentDescription("10-day milestone star");
-            starsContainer.addView(star);
+            // Add larger, more visible stars
+            for (int i = 0; i < totalStars; i++) {
+                ImageView star = new ImageView(this);
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(36, 36);
+                params.setMargins(4, 0, 4, 0);
+                star.setLayoutParams(params);
+                star.setImageResource(R.drawable.ic_gold_star);
+                star.setContentDescription("10-day milestone star");
+                starsContainer.addView(star);
+            }
+        } catch (Exception e) {
+            // Ignore star display errors
         }
     }
 
@@ -234,17 +257,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startPetService() {
-        android.content.Intent serviceIntent = new android.content.Intent(this, PetService.class);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent);
-        } else {
-            startService(serviceIntent);
+        try {
+            android.content.Intent serviceIntent = new android.content.Intent(this, PetService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent);
+            } else {
+                startService(serviceIntent);
+            }
+        } catch (Exception e) {
+            // Ignore service start errors
         }
     }
 
     private void stopPetService() {
-        android.content.Intent serviceIntent = new android.content.Intent(this, PetService.class);
-        stopService(serviceIntent);
+        try {
+            android.content.Intent serviceIntent = new android.content.Intent(this, PetService.class);
+            stopService(serviceIntent);
+        } catch (Exception e) {
+            // Ignore service stop errors
+        }
     }
 
     private void feedPet() {
@@ -355,57 +386,74 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateUI() {
-        hungerBar.setProgress((int) pet.getHunger());
-        happinessBar.setProgress((int) pet.getHappiness());
-        energyBar.setProgress((int) pet.getEnergy());
-        cleanlinessBar.setProgress((int) pet.getCleanliness());
+        try {
+            hungerBar.setProgress((int) pet.getHunger());
+            happinessBar.setProgress((int) pet.getHappiness());
+            energyBar.setProgress((int) pet.getEnergy());
+            cleanlinessBar.setProgress((int) pet.getCleanliness());
 
-        hungerText.setText(String.valueOf((int) pet.getHunger()));
-        happinessText.setText(String.valueOf((int) pet.getHappiness()));
-        energyText.setText(String.valueOf((int) pet.getEnergy()));
-        cleanlinessText.setText(String.valueOf((int) pet.getCleanliness()));
-        ageText.setText(String.valueOf((int) pet.getAge()));
+            hungerText.setText(String.valueOf((int) pet.getHunger()));
+            happinessText.setText(String.valueOf((int) pet.getHappiness()));
+            energyText.setText(String.valueOf((int) pet.getEnergy()));
+            cleanlinessText.setText(String.valueOf((int) pet.getCleanliness()));
+            ageText.setText(String.valueOf((int) pet.getAge()));
 
-        updateStarsDisplay();
-        updatePetImage();
-        updateButtonStates();
-        checkLowStats();
+            updateStarsDisplay();
+            updatePetImage();
+            updateButtonStates();
+            checkLowStats();
+        } catch (Exception e) {
+            // If UI update fails, try to recover
+            Toast.makeText(this, "UI update error, recovering...", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void updatePetImage() {
+        try {
+            int drawableId = R.drawable.ic_pet_egg;
+
+            // Simple life stage detection - NO MOODS for now
+            if ("baby".equals(pet.getStage())) {
+                drawableId = R.drawable.ic_pet_baby;
+            } else if ("teen".equals(pet.getStage())) {
+                drawableId = R.drawable.ic_pet_teen;
+            } else if ("adult".equals(pet.getStage())) {
+                drawableId = R.drawable.ic_pet_adult;
+            }
+
+            petImage.setImageResource(drawableId);
+
+            // Apply visual effects
+            if (!pet.isAlive()) {
+                petImage.setAlpha(0.5f);
+                showMessage("Your DigiBuddy has passed away... Reset to start over.");
+            } else if (pet.isSleeping()) {
+                petImage.setAlpha(0.7f);
+            } else {
+                petImage.setAlpha(1.0f);
+            }
+        } catch (Exception e) {
+            // If image setting fails, use a default
+            try {
+                petImage.setImageResource(R.drawable.ic_pet_egg);
+            } catch (Exception ex) {
+                // Last resort - do nothing
+            }
+        }
     }
 
     private void checkLowStats() {
         if (!pet.isAlive()) return;
 
-        if (pet.getHunger() <= 10 && pet.getHunger() > 0) {
-            showMessage("⚠️ Your DigiBuddy is very hungry! Feed it!");
-        } else if (pet.getHappiness() <= 10 && pet.getHappiness() > 0) {
-            showMessage("⚠️ Your DigiBuddy is very sad! Play with it!");
-        } else if (pet.getEnergy() <= 10 && pet.getEnergy() > 0) {
-            showMessage("⚠️ Your DigiBuddy is exhausted! Let it sleep!");
-        } else if (pet.getCleanliness() <= 10 && pet.getCleanliness() > 0) {
-            showMessage("⚠️ Your DigiBuddy is very dirty! Clean it!");
-        }
-    }
-
-    private void updatePetImage() {
-        int drawableId = R.drawable.ic_pet_egg;
-
-        if ("baby".equals(pet.getStage())) {
-            drawableId = R.drawable.ic_pet_baby;
-        } else if ("teen".equals(pet.getStage())) {
-            drawableId = R.drawable.ic_pet_teen;
-        } else if ("adult".equals(pet.getStage())) {
-            drawableId = R.drawable.ic_pet_adult;
-        }
-
-        petImage.setImageResource(drawableId);
-
-        if (!pet.isAlive()) {
-            petImage.setAlpha(0.5f);
-            showMessage("Your DigiBuddy has passed away... Reset to start over.");
-        } else if (pet.isSleeping()) {
-            petImage.setAlpha(0.7f);
-        } else {
-            petImage.setAlpha(1.0f);
+        // Simple alerts without mood dependencies
+        if (pet.getHunger() <= 25 && pet.getHunger() > 0) {
+            showMessage("Your DigiBuddy needs food!");
+        } else if (pet.getHappiness() <= 25 && pet.getHappiness() > 0) {
+            showMessage("Your DigiBuddy wants to play!");
+        } else if (pet.getEnergy() <= 25 && pet.getEnergy() > 0) {
+            showMessage("Your DigiBuddy needs rest!");
+        } else if (pet.getCleanliness() <= 25 && pet.getCleanliness() > 0) {
+            showMessage("Your DigiBuddy needs cleaning!");
         }
     }
 
@@ -421,8 +469,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showMessage(String message) {
-        messageText.setText(message);
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        try {
+            messageText.setText(message);
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            // Ignore message errors
+        }
     }
 
     private void startUIUpdates() {
