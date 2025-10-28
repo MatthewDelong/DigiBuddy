@@ -29,7 +29,13 @@ public class MainActivity extends AppCompatActivity {
     private final Handler uiHandler = new Handler();
     private Runnable uiUpdateRunnable;
 
-    // Mood enum - SAFE TO ADD
+    // Animation system
+    private Handler animationHandler;
+    private Runnable blinkRunnable;
+    private static final long BLINK_INTERVAL = 3000; // 3 seconds between blinks
+    private static final long BLINK_DURATION = 200;  // 200ms blink duration
+
+    // Mood enum
     enum PetMood {
         HAPPY, HUNGRY, TIRED, DIRTY, SLEEPING, DEFAULT
     }
@@ -52,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
 
         setupButtons();
         startUIUpdates();
+        initializeAnimations();
         requestNotificationPermission();
     }
 
@@ -83,32 +90,166 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Safe animation initialization
+    private void initializeAnimations() {
+        try {
+            animationHandler = new Handler();
+            startBlinking();
+        } catch (Exception e) {
+            // If animations fail, the app still works without them
+        }
+    }
+
+    // Safe blinking system
+    private void startBlinking() {
+        blinkRunnable = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    blinkEyes();
+                    // Schedule next blink only if handler is still valid
+                    if (animationHandler != null) {
+                        animationHandler.postDelayed(this, BLINK_INTERVAL);
+                    }
+                } catch (Exception e) {
+                    // If blinking fails, stop the animation but don't crash
+                    if (animationHandler != null) {
+                        animationHandler.removeCallbacks(blinkRunnable);
+                    }
+                }
+            }
+        };
+
+        // Start blinking after initial delay
+        if (animationHandler != null) {
+            animationHandler.postDelayed(blinkRunnable, BLINK_INTERVAL);
+        }
+    }
+
+    private void blinkEyes() {
+        try {
+            // Don't blink if pet is dead, sleeping, or an egg
+            if (!pet.isAlive() || pet.isSleeping() || "egg".equals(pet.getStage())) {
+                return;
+            }
+
+            int currentDrawableId = getCurrentDrawableId();
+            int closedEyesDrawableId = getClosedEyesDrawableId(currentDrawableId);
+
+            // Only blink if we have a closed-eye version
+            if (closedEyesDrawableId != 0) {
+                // Show closed eyes
+                petImage.setImageResource(closedEyesDrawableId);
+
+                // Return to open eyes after blink duration
+                if (animationHandler != null) {
+                    animationHandler.postDelayed(() -> {
+                        try {
+                            if (pet.isAlive() && !isFinishing()) {
+                                updatePetImage(); // This will set the correct open-eyed image
+                            }
+                        } catch (Exception e) {
+                            // Ignore errors during blink recovery
+                        }
+                    }, BLINK_DURATION);
+                }
+            }
+        } catch (Exception e) {
+            // If blinking fails, just continue without blinking
+        }
+    }
+
+    // Safe: Get current drawable with fallbacks
+    private int getCurrentDrawableId() {
+        try {
+            PetMood currentMood = determinePetMood();
+
+            if ("egg".equals(pet.getStage())) {
+                return R.drawable.ic_pet_egg;
+            } else if ("baby".equals(pet.getStage())) {
+                return R.drawable.ic_pet_baby;
+            } else if ("teen".equals(pet.getStage())) {
+                return R.drawable.ic_pet_teen;
+            } else if ("adult".equals(pet.getStage())) {
+                return R.drawable.ic_pet_adult;
+            }
+
+            // Mood overrides with safe fallbacks
+            switch (currentMood) {
+                case HAPPY: return R.drawable.ic_pet_happy;
+                case HUNGRY: return R.drawable.ic_pet_hungry;
+                case TIRED:
+                case SLEEPING: return R.drawable.ic_pet_tired;
+                case DIRTY: return R.drawable.ic_pet_dirty;
+                default: return R.drawable.ic_pet_adult;
+            }
+        } catch (Exception e) {
+            return R.drawable.ic_pet_egg; // Ultimate fallback
+        }
+    }
+
+    // Safe: Get closed-eye version with extensive fallbacks
+    private int getClosedEyesDrawableId(int openEyesDrawableId) {
+        try {
+            // Use if-else instead of switch for resource safety
+            if (openEyesDrawableId == R.drawable.ic_pet_happy) {
+                return R.drawable.ic_pet_happy_closed;
+            } else if (openEyesDrawableId == R.drawable.ic_pet_hungry) {
+                return R.drawable.ic_pet_hungry_closed;
+            } else if (openEyesDrawableId == R.drawable.ic_pet_tired) {
+                return R.drawable.ic_pet_tired_closed;
+            } else if (openEyesDrawableId == R.drawable.ic_pet_dirty) {
+                return R.drawable.ic_pet_dirty_closed;
+            } else if (openEyesDrawableId == R.drawable.ic_pet_baby) {
+                return R.drawable.ic_pet_baby_closed;
+            } else if (openEyesDrawableId == R.drawable.ic_pet_teen) {
+                return R.drawable.ic_pet_teen_closed;
+            } else if (openEyesDrawableId == R.drawable.ic_pet_adult) {
+                return R.drawable.ic_pet_adult_closed;
+            } else {
+                return 0; // No closed eyes version available
+            }
+        } catch (Exception e) {
+            return 0; // Safe return if anything goes wrong
+        }
+    }
+
     private void loadPet() {
         try {
             pet = petPreferences.loadPet();
 
+            // Calculate time passed since last update
             long timePassed = System.currentTimeMillis() - pet.getLastUpdate();
             long minutesPassed = timePassed / (1000 * 60);
 
+            // Check if this is a fresh pet (all stats at starting values)
             boolean isFreshPet = pet.getHunger() == 100 &&
                     pet.getHappiness() == 100 &&
                     pet.getEnergy() == 100 &&
                     pet.getAge() == 0 &&
                     pet.getCleanliness() == 100;
 
+            // Apply background degradation ONLY if:
+            // 1. More than 1 minute has passed AND
+            // 2. Pet is alive AND
+            // 3. This is NOT a fresh pet
             if (minutesPassed > 1 && pet.isAlive() && !isFreshPet) {
                 double hungerLoss = minutesPassed * 0.1;
                 double happinessLoss = minutesPassed * 0.05;
                 double energyLoss = minutesPassed * 0.05;
                 double cleanlinessLoss = minutesPassed * 0.02;
 
+                // Calculate age based on days passed (1440 minutes = 1 day)
                 double daysPassed = minutesPassed / 1440.0;
                 double previousAge = pet.getAge();
                 pet.setAge(pet.getAge() + daysPassed);
 
+                // Check for milestone achievements
                 checkMilestones(previousAge, pet.getAge());
 
+                // If sleeping, apply sleep benefits
                 if (pet.isSleeping()) {
+                    // While sleeping: energy restores, hunger decreases slower
                     double energyGain = minutesPassed * 0.5;
                     pet.setEnergy(Math.min(100, pet.getEnergy() + energyGain));
                     hungerLoss *= 0.3;
@@ -134,7 +275,9 @@ public class MainActivity extends AppCompatActivity {
                         showMessage("Welcome back! Your DigiBuddy missed you!");
                     }
                 }
-            } else if (isFreshPet) {
+            }
+            // If it's a fresh pet, update the lastUpdate time to prevent immediate degradation
+            else if (isFreshPet) {
                 pet.setLastUpdate(System.currentTimeMillis());
                 petPreferences.savePet(pet);
             }
@@ -142,6 +285,7 @@ public class MainActivity extends AppCompatActivity {
             updateUI();
             updateSleepButtonText();
         } catch (Exception e) {
+            // If anything fails, create a fresh pet
             pet = new Pet();
             petPreferences.savePet(pet);
             updateUI();
@@ -153,6 +297,7 @@ public class MainActivity extends AppCompatActivity {
             int previousDays = (int) previousAge;
             int currentDays = (int) currentAge;
 
+            // Check if we crossed any 10-day milestone
             if (currentDays > previousDays && currentDays % 10 == 0) {
                 String milestoneMessage = "🎉 Milestone reached! Your DigiBuddy is now " + currentDays + " days old!";
                 showMessage(milestoneMessage);
@@ -169,6 +314,7 @@ public class MainActivity extends AppCompatActivity {
 
             int totalStars = (int) pet.getAge() / 10;
 
+            // Update star info text
             if (totalStars > 0) {
                 if (totalStars == 1) {
                     starInfoText.setText("🌟 1 milestone");
@@ -176,9 +322,10 @@ public class MainActivity extends AppCompatActivity {
                     starInfoText.setText("🌟 " + totalStars + " milestones");
                 }
             } else {
-                starInfoText.setText("");
+                starInfoText.setText(""); // No text when no stars
             }
 
+            // Add larger, more visible stars
             for (int i = 0; i < totalStars; i++) {
                 ImageView star = new ImageView(this);
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(36, 36);
@@ -385,7 +532,7 @@ public class MainActivity extends AppCompatActivity {
             ageText.setText(String.valueOf((int) pet.getAge()));
 
             updateStarsDisplay();
-            updatePetImage(); // Now with mood support
+            updatePetImage();
             updateButtonStates();
             checkLowStats();
         } catch (Exception e) {
@@ -393,8 +540,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // === SAFE MOOD SYSTEM ADDITION ===
-
+    // Mood detection method
     private PetMood determinePetMood() {
         try {
             if (!pet.isAlive()) {
@@ -421,7 +567,7 @@ public class MainActivity extends AppCompatActivity {
                 return PetMood.DIRTY;
             }
 
-            // Then check for happiness
+            // Then check for happiness (only if not in critical state)
             if (pet.getHappiness() > 70 && pet.getEnergy() > 50 && pet.getHunger() > 50) {
                 return PetMood.HAPPY;
             }
@@ -432,6 +578,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Updated pet image method with mood support
     private void updatePetImage() {
         try {
             int drawableId = R.drawable.ic_pet_egg;
@@ -453,10 +600,8 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 // Override with mood-specific images if available (but not for egg stage)
-                // SAFE: Each mood has fallback to life stage image
                 switch (currentMood) {
                     case HAPPY:
-                        // Only use happy if the drawable exists
                         drawableId = R.drawable.ic_pet_happy;
                         break;
                     case HUNGRY:
@@ -499,6 +644,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Updated mood message method
     private void updateMoodMessage(PetMood mood) {
         try {
             String message;
@@ -624,13 +770,45 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         loadPet();
+
+        // Restart animations when app resumes
+        try {
+            if (animationHandler != null) {
+                startBlinking();
+            }
+        } catch (Exception e) {
+            // Animations can fail safely
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Stop animations when app pauses to save resources
+        try {
+            if (animationHandler != null && blinkRunnable != null) {
+                animationHandler.removeCallbacks(blinkRunnable);
+            }
+        } catch (Exception e) {
+            // Ignore errors when stopping animations
+        }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (uiHandler != null && uiUpdateRunnable != null) {
-            uiHandler.removeCallbacks(uiUpdateRunnable);
+        // Clean up all handlers
+        try {
+            if (uiHandler != null && uiUpdateRunnable != null) {
+                uiHandler.removeCallbacks(uiUpdateRunnable);
+            }
+            if (animationHandler != null) {
+                if (blinkRunnable != null) {
+                    animationHandler.removeCallbacks(blinkRunnable);
+                }
+            }
+        } catch (Exception e) {
+            // Ignore cleanup errors
         }
     }
 }
