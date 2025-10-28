@@ -78,7 +78,7 @@ DigiBuddy is an Android virtual pet care application where users can nurture and
 ### Prerequisites
 
 - Android Studio Narwhal or later
-- Minimum SDK: 29 (Android 10.0)
+- Minimum SDK: 23 (Android 6.0)
 - Target SDK: 34 (Android 14)
 
 ### Required Permissions
