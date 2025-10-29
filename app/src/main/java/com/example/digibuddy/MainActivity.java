@@ -30,12 +30,6 @@ public class MainActivity extends AppCompatActivity {
     private final Handler uiHandler = new Handler();
     private Runnable uiUpdateRunnable;
 
-    // Animation system
-    private Handler animationHandler;
-    private Runnable blinkRunnable;
-    private static final long BLINK_INTERVAL = 3000; // 3 seconds between blinks
-    private static final long BLINK_DURATION = 200;  // 200ms blink duration
-
     // Mood enum
     enum PetMood {
         HAPPY, HUNGRY, TIRED, DIRTY, SLEEPING, DEFAULT
@@ -59,7 +53,6 @@ public class MainActivity extends AppCompatActivity {
 
         setupButtons();
         startUIUpdates();
-        initializeAnimations();
         requestNotificationPermission();
     }
 
@@ -88,130 +81,6 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             Toast.makeText(this, "Error initializing views", Toast.LENGTH_LONG).show();
             throw e;
-        }
-    }
-
-    // Safe animation initialization
-    private void initializeAnimations() {
-        try {
-            animationHandler = new Handler();
-            startBlinking();
-        } catch (Exception e) {
-            // If animations fail, the app still works without them
-        }
-    }
-
-    // Safe blinking system
-    private void startBlinking() {
-        blinkRunnable = new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    blinkEyes();
-                    // Schedule next blink only if handler is still valid
-                    if (animationHandler != null) {
-                        animationHandler.postDelayed(this, BLINK_INTERVAL);
-                    }
-                } catch (Exception e) {
-                    // If blinking fails, stop the animation but don't crash
-                    if (animationHandler != null) {
-                        animationHandler.removeCallbacks(blinkRunnable);
-                    }
-                }
-            }
-        };
-
-        // Start blinking after initial delay
-        if (animationHandler != null) {
-            animationHandler.postDelayed(blinkRunnable, BLINK_INTERVAL);
-        }
-    }
-
-    private void blinkEyes() {
-        try {
-            // Don't blink if pet is dead, sleeping, or an egg
-            if (!pet.isAlive() || pet.isSleeping() || "egg".equals(pet.getStage())) {
-                return;
-            }
-
-            int currentDrawableId = getCurrentDrawableId();
-            int closedEyesDrawableId = getClosedEyesDrawableId(currentDrawableId);
-
-            // Only blink if we have a closed-eye version
-            if (closedEyesDrawableId != 0) {
-                // Show closed eyes
-                petImage.setImageResource(closedEyesDrawableId);
-
-                // Return to open eyes after blink duration
-                if (animationHandler != null) {
-                    animationHandler.postDelayed(() -> {
-                        try {
-                            if (pet.isAlive() && !isFinishing()) {
-                                updatePetImage(); // This will set the correct open-eyed image
-                            }
-                        } catch (Exception e) {
-                            // Ignore errors during blink recovery
-                        }
-                    }, BLINK_DURATION);
-                }
-            }
-        } catch (Exception e) {
-            // If blinking fails, just continue without blinking
-        }
-    }
-
-    // Safe: Get current drawable with fallbacks
-    private int getCurrentDrawableId() {
-        try {
-            PetMood currentMood = determinePetMood();
-
-            if ("egg".equals(pet.getStage())) {
-                return R.drawable.ic_pet_egg;
-            } else if ("baby".equals(pet.getStage())) {
-                return R.drawable.ic_pet_baby;
-            } else if ("teen".equals(pet.getStage())) {
-                return R.drawable.ic_pet_teen;
-            } else if ("adult".equals(pet.getStage())) {
-                return R.drawable.ic_pet_adult;
-            }
-
-            // Mood overrides with safe fallbacks
-            switch (currentMood) {
-                case HAPPY: return R.drawable.ic_pet_happy;
-                case HUNGRY: return R.drawable.ic_pet_hungry;
-                case TIRED:
-                case SLEEPING: return R.drawable.ic_pet_tired;
-                case DIRTY: return R.drawable.ic_pet_dirty;
-                default: return R.drawable.ic_pet_adult;
-            }
-        } catch (Exception e) {
-            return R.drawable.ic_pet_egg; // Ultimate fallback
-        }
-    }
-
-    // Safe: Get closed-eye version with extensive fallbacks
-    private int getClosedEyesDrawableId(int openEyesDrawableId) {
-        try {
-            // Use if-else instead of switch for resource safety
-            if (openEyesDrawableId == R.drawable.ic_pet_happy) {
-                return R.drawable.ic_pet_happy_closed;
-            } else if (openEyesDrawableId == R.drawable.ic_pet_hungry) {
-                return R.drawable.ic_pet_hungry_closed;
-            } else if (openEyesDrawableId == R.drawable.ic_pet_tired) {
-                return R.drawable.ic_pet_tired_closed;
-            } else if (openEyesDrawableId == R.drawable.ic_pet_dirty) {
-                return R.drawable.ic_pet_dirty_closed;
-            } else if (openEyesDrawableId == R.drawable.ic_pet_baby) {
-                return R.drawable.ic_pet_baby_closed;
-            } else if (openEyesDrawableId == R.drawable.ic_pet_teen) {
-                return R.drawable.ic_pet_teen_closed;
-            } else if (openEyesDrawableId == R.drawable.ic_pet_adult) {
-                return R.drawable.ic_pet_adult_closed;
-            } else {
-                return 0; // No closed eyes version available
-            }
-        } catch (Exception e) {
-            return 0; // Safe return if anything goes wrong
         }
     }
 
@@ -793,45 +662,13 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         loadPet();
-
-        // Restart animations when app resumes
-        try {
-            if (animationHandler != null) {
-                startBlinking();
-            }
-        } catch (Exception e) {
-            // Animations can fail safely
-        }
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        // Stop animations when app pauses to save resources
-        try {
-            if (animationHandler != null && blinkRunnable != null) {
-                animationHandler.removeCallbacks(blinkRunnable);
-            }
-        } catch (Exception e) {
-            // Ignore errors when stopping animations
-        }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Clean up all handlers
-        try {
-            if (uiHandler != null && uiUpdateRunnable != null) {
-                uiHandler.removeCallbacks(uiUpdateRunnable);
-            }
-            if (animationHandler != null) {
-                if (blinkRunnable != null) {
-                    animationHandler.removeCallbacks(blinkRunnable);
-                }
-            }
-        } catch (Exception e) {
-            // Ignore cleanup errors
+        if (uiHandler != null && uiUpdateRunnable != null) {
+            uiHandler.removeCallbacks(uiUpdateRunnable);
         }
     }
 }
