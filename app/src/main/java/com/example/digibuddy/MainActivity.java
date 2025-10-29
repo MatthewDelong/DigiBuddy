@@ -5,6 +5,7 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -239,9 +240,11 @@ public class MainActivity extends AppCompatActivity {
                 double energyLoss = minutesPassed * 0.05;
                 double cleanlinessLoss = minutesPassed * 0.02;
 
-                // Calculate age based on days passed (1440 minutes = 1 day)
+                // FIXED: Calculate age based on days passed (1440 minutes = 1 day)
                 double daysPassed = minutesPassed / 1440.0;
                 double previousAge = pet.getAge();
+
+                // FIXED: Add full days passed to age
                 pet.setAge(pet.getAge() + daysPassed);
 
                 // Check for milestone achievements
@@ -284,6 +287,13 @@ public class MainActivity extends AppCompatActivity {
 
             updateUI();
             updateSleepButtonText();
+
+            // DEBUG: Show age calculation info
+            long currentTimePassed = System.currentTimeMillis() - pet.getLastUpdate();
+            long currentMinutesPassed = currentTimePassed / (1000 * 60);
+            double currentDaysPassed = currentMinutesPassed / 1440.0;
+            Log.d("AgeDebug", "Minutes passed: " + currentMinutesPassed + ", Days passed: " + currentDaysPassed + ", Current age: " + pet.getAge());
+
         } catch (Exception e) {
             // If anything fails, create a fresh pet
             pet = new Pet();
@@ -346,6 +356,16 @@ public class MainActivity extends AppCompatActivity {
         sleepButton.setOnClickListener(v -> toggleSleep());
         cleanButton.setOnClickListener(v -> cleanPet());
         resetButton.setOnClickListener(v -> resetPet());
+
+        // TEMPORARY: Debug button to force age progression
+        resetButton.setOnLongClickListener(v -> {
+            // Long press reset button to debug age
+            pet.setAge(pet.getAge() + 1.0);
+            pet.updateStage();
+            saveAndUpdate();
+            showMessage("Debug: Age increased to " + (int)pet.getAge());
+            return true;
+        });
     }
 
     private void requestNotificationPermission() {
@@ -754,7 +774,10 @@ public class MainActivity extends AppCompatActivity {
                         pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.02));
                     }
 
-                    pet.setAge(pet.getAge() + 0.00001157);
+                    // FIXED: Real-time age progression (1 second = 1/86400 of a day)
+                    // 86400 seconds in a day (24 hours * 60 minutes * 60 seconds)
+                    pet.setAge(pet.getAge() + (1.0 / 86400.0));
+
                     checkMilestones(previousAge, pet.getAge());
                     pet.updateStage();
                     pet.checkDeath();

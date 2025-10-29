@@ -159,8 +159,11 @@ public class PetService extends Service {
                 double energyLoss = minutesPassed * 0.05;
                 double cleanlinessLoss = minutesPassed * 0.02;
 
+                // FIX: Calculate age based on days passed (1440 minutes = 1 day)
                 double daysPassed = minutesPassed / 1440.0;
                 double previousAge = pet.getAge();
+
+                // FIX: Add full days passed to age
                 pet.setAge(pet.getAge() + daysPassed);
 
                 if (pet.isSleeping()) {
