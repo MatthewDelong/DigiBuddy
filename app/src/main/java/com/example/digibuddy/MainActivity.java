@@ -206,10 +206,10 @@ public class MainActivity extends AppCompatActivity {
             // 2. Pet is alive AND
             // 3. This is NOT a fresh pet
             if (minutesPassed > 1 && pet.isAlive() && !isFreshPet) {
-                double hungerLoss = minutesPassed * 0.1;
-                double happinessLoss = minutesPassed * 0.05;
-                double energyLoss = minutesPassed * 0.05;
-                double cleanlinessLoss = minutesPassed * 0.02;
+                double hungerLoss = minutesPassed * 0.02; // Changed from 0.1 to 0.02
+                double happinessLoss = minutesPassed * 0.01; // Changed from 0.05 to 0.01
+                double energyLoss = minutesPassed * 0.01; // Changed from 0.05 to 0.01
+                double cleanlinessLoss = minutesPassed * 0.004; // Changed from 0.02 to 0.004
 
                 // Calculate age based on days passed (1440 minutes = 1 day)
                 double daysPassed = minutesPassed / 1440.0;
@@ -224,10 +224,10 @@ public class MainActivity extends AppCompatActivity {
                 // If sleeping, apply sleep benefits
                 if (pet.isSleeping()) {
                     // While sleeping: energy restores, hunger decreases slower
-                    double energyGain = minutesPassed * 0.5;
+                    double energyGain = minutesPassed * 0.06; // Changed from 0.3 to 0.06
                     pet.setEnergy(Math.min(100, pet.getEnergy() + energyGain));
-                    hungerLoss *= 0.3;
-                    happinessLoss *= 0.5;
+                    hungerLoss *= 0.3; // This now applies to the slower base rate
+                    happinessLoss *= 0.4;
                     cleanlinessLoss *= 0.5;
                     energyLoss = 0;
                 }
@@ -773,22 +773,20 @@ public class MainActivity extends AppCompatActivity {
                     double previousAge = pet.getAge();
 
                     if (pet.isSleeping()) {
-                        pet.setEnergy(Math.min(100, pet.getEnergy() + 0.3));
-                        pet.setHunger(Math.max(0, pet.getHunger() - 0.03));
-                        pet.setHappiness(Math.max(0, pet.getHappiness() - 0.02));
-                        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.01));
+                        pet.setEnergy(Math.min(100, pet.getEnergy() + 0.06));
+                        pet.setHunger(Math.max(0, pet.getHunger() - 0.006));
+                        pet.setHappiness(Math.max(0, pet.getHappiness() - 0.004));
+                        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.002));
                     } else {
-                        pet.setHunger(Math.max(0, pet.getHunger() - 0.1));
-                        pet.setHappiness(Math.max(0, pet.getHappiness() - 0.05));
-                        pet.setEnergy(Math.max(0, pet.getEnergy() - 0.05));
-                        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.02));
+                        pet.setHunger(Math.max(0, pet.getHunger() - 0.02));
+                        pet.setHappiness(Math.max(0, pet.getHappiness() - 0.01));
+                        pet.setEnergy(Math.max(0, pet.getEnergy() - 0.01));
+                        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.004));
                     }
 
-                    // Real-time age progression (1 second = 1/86400 of a day)
-                    // 86400 seconds in a day (24 hours * 60 minutes * 60 seconds)
-                    pet.setAge(pet.getAge() + (1.0 / 86400.0));
-
+                    pet.setAge(pet.getAge() + 0.00001157);
                     checkMilestones(previousAge, pet.getAge());
+                    pet.updateStage();
                     pet.checkDeath();
                     saveAndUpdate();
                 }
