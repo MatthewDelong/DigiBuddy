@@ -140,23 +140,23 @@ DigiBuddy is an Android virtual pet care application where users can nurture and
 ## Stat Decay Rates (Per Second)
 ### While Awake:
 
-- Hunger: -0.1
+- Hunger: -0.02
 
-- Happiness: -0.05
+- Happiness: -0.01
 
-- Energy: -0.05
+- Energy: -0.01
 
-- Cleanliness: -0.02
+- Cleanliness: -0.004
 
 ### While Sleeping:
 
-- Hunger: -0.03 (70% slower)
+- Hunger: -0.006
 
-- Happiness: -0.02 (60% slower)
+- Happiness: -0.004
 
-- Energy: +0.3 (restores energy)
+- Energy: +0.06
 
-- Cleanliness: -0.01 (50% slower)
+- Cleanliness: -0.002
 
 ## Interaction Effects
 - Feed: Hunger +25, Happiness +5, Cleanliness -5
