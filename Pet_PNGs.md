@@ -25,7 +25,7 @@ res/
 │   ├── ic_pet_dirty_body.png
 │   ├── ic_pet_dirty_eyes.png
 │   └── ic_pet_dirty_pupils.png
-├── drawable-mdpi/ (300x300)
+├── drawable-hdpi/ (300x300)
 │   ├── ic_pet_adult_body.png
 │   ├── ic_pet_adult_eyes.png
 │   ├── ic_pet_adult_pupils.png
