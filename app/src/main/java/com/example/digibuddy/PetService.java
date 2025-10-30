@@ -154,24 +154,26 @@ public class PetService extends Service {
             long minutesPassed = timePassed / (1000 * 60);
 
             if (minutesPassed > 0) {
-                double hungerLoss = minutesPassed * 0.1;
-                double happinessLoss = minutesPassed * 0.05;
-                double energyLoss = minutesPassed * 0.05;
-                double cleanlinessLoss = minutesPassed * 0.02;
+                // CORRECTED: Per-minute rates that match MainActivity's per-second rates
+                double hungerLoss = minutesPassed * 1.2;      // 0.02 per second × 60 = 1.2 per minute
+                double happinessLoss = minutesPassed * 0.6;   // 0.01 per second × 60 = 0.6 per minute
+                double energyLoss = minutesPassed * 0.6;      // 0.01 per second × 60 = 0.6 per minute
+                double cleanlinessLoss = minutesPassed * 0.24; // 0.004 per second × 60 = 0.24 per minute
 
-                // FIX: Calculate age based on days passed (1440 minutes = 1 day)
+                // Calculate age based on days passed (1440 minutes = 1 day)
                 double daysPassed = minutesPassed / 1440.0;
                 double previousAge = pet.getAge();
 
-                // FIX: Add full days passed to age
+                // Add full days passed to age
                 pet.setAge(pet.getAge() + daysPassed);
 
                 if (pet.isSleeping()) {
-                    double energyGain = minutesPassed * 0.5;
+                    // CORRECTED: Per-minute rates that match MainActivity's per-second rates
+                    double energyGain = minutesPassed * 3.6;  // 0.06 per second × 60 = 3.6 per minute
                     pet.setEnergy(Math.min(100, pet.getEnergy() + energyGain));
-                    hungerLoss *= 0.3;
-                    happinessLoss *= 0.5;
-                    cleanlinessLoss *= 0.5;
+                    hungerLoss *= 0.3;      // 70% slower (same ratio as MainActivity)
+                    happinessLoss *= 0.4;   // 60% slower (same ratio as MainActivity)
+                    cleanlinessLoss *= 0.5; // 50% slower (same ratio as MainActivity)
                     energyLoss = 0;
                 }
 
