@@ -128,20 +128,20 @@ res/
 ```
 Total files needed: 8 states × 3 layers × 5 densities = 120 PNG files
 
-- **Creation Order:**
+ ### **Creation Order:** ###
 - Start with adult state (base design)
 - Then create baby, teen variations
 - Then create mood variations (happy, hungry, tired, dirty)
 - Finally egg state
 
-- **For ALL 8 states, ensure:**
+ ### **For ALL 8 states, ensure:** ###
 - Same character silhouette proportions
 - Same eye positioning across all states
 - Consistent colour palette
 - Same pupil size and shape
 - All files exactly 400x400px for xhdpi
 
-- **Scale to other densities:**
+ ### **Scale to other densities:** ###
 - Use image editing software to scale the 400px versions
 - Maintain same file names, just different folder
 
