@@ -41,7 +41,11 @@ public class Pet {
     }
 
     public double getAge() { return age; }
-    public void setAge(double age) { this.age = age; }
+    public void setAge(double age) {
+        this.age = age;
+        // Auto-update stage when age changes
+        updateStage();
+    }
 
     public String getStage() { return stage; }
     public void setStage(String stage) { this.stage = stage; }
@@ -78,7 +82,7 @@ public class Pet {
     }
 
     public void checkDeath() {
-        if (hunger <= 0 || happiness <= 0 || energy <= 0) {
+        if (hunger <= 0 || happiness <= 0 || energy <= 0 || cleanliness <= 0) {
             isAlive = false;
         }
     }

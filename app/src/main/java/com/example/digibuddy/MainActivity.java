@@ -41,6 +41,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         initializeViews();
+        checkAvailableDrawables(); // Check what drawables we have
+        checkDrawableProperties(); // Check drawable sizes and properties
         petPreferences = new PetPreferences(this);
 
         try {
@@ -84,6 +86,106 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Debug method to check available drawables
+    private void checkAvailableDrawables() {
+        try {
+            int[] drawablesToCheck = {
+                    R.drawable.ic_pet_egg,
+                    R.drawable.ic_pet_baby,
+                    R.drawable.ic_pet_teen,
+                    R.drawable.ic_pet_adult,
+                    R.drawable.ic_pet_happy,
+                    R.drawable.ic_pet_hungry,
+                    R.drawable.ic_pet_tired,
+                    R.drawable.ic_pet_dirty
+            };
+
+            String[] drawableNames = {
+                    "ic_pet_egg",
+                    "ic_pet_baby",
+                    "ic_pet_teen",
+                    "ic_pet_adult",
+                    "ic_pet_happy",
+                    "ic_pet_hungry",
+                    "ic_pet_tired",
+                    "ic_pet_dirty"
+            };
+
+            for (int i = 0; i < drawablesToCheck.length; i++) {
+                try {
+                    String resourceName = getResources().getResourceName(drawablesToCheck[i]);
+                    Log.d("DrawableCheck", "✓ " + drawableNames[i] + " exists: " + resourceName);
+                } catch (Exception e) {
+                    Log.d("DrawableCheck", "✗ " + drawableNames[i] + " MISSING: " + e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            Log.e("DrawableCheck", "Error checking drawables: " + e.getMessage());
+        }
+    }
+
+    // New method to check drawable properties and sizes
+    private void checkDrawableProperties() {
+        try {
+            int[] drawableIds = {
+                    R.drawable.ic_pet_egg,
+                    R.drawable.ic_pet_baby,
+                    R.drawable.ic_pet_teen,
+                    R.drawable.ic_pet_adult,
+                    R.drawable.ic_pet_happy,
+                    R.drawable.ic_pet_hungry,
+                    R.drawable.ic_pet_tired,
+                    R.drawable.ic_pet_dirty
+            };
+
+            String[] names = {
+                    "ic_pet_egg", "ic_pet_baby", "ic_pet_teen", "ic_pet_adult",
+                    "ic_pet_happy", "ic_pet_hungry", "ic_pet_tired", "ic_pet_dirty"
+            };
+
+            for (int i = 0; i < drawableIds.length; i++) {
+                try {
+                    android.graphics.drawable.Drawable drawable = ContextCompat.getDrawable(this, drawableIds[i]);
+                    if (drawable != null) {
+                        int width = drawable.getIntrinsicWidth();
+                        int height = drawable.getIntrinsicHeight();
+                        Log.d("DrawableProps", names[i] + " - Size: " + width + "x" + height +
+                                ", Bounds: " + drawable.getBounds() +
+                                ", ConstantState: " + (drawable.getConstantState() != null));
+
+                        // Check if drawable is effectively empty
+                        if (width <= 0 || height <= 0) {
+                            Log.e("DrawableProps", names[i] + " - EMPTY/INVALID SIZE!");
+                        }
+                    } else {
+                        Log.e("DrawableProps", names[i] + " - NULL DRAWABLE");
+                    }
+                } catch (Exception e) {
+                    Log.e("DrawableProps", names[i] + " - ERROR: " + e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            Log.e("DrawableProps", "Error checking drawable properties: " + e.getMessage());
+        }
+    }
+
+    private void debugStageInfo() {
+        String stage = pet.getStage();
+        double age = pet.getAge();
+        Log.d("StageDebug", "=== STAGE DEBUG ===");
+        Log.d("StageDebug", "Age: " + age + " days");
+        Log.d("StageDebug", "Stage: " + stage);
+        Log.d("StageDebug", "Alive: " + pet.isAlive());
+        Log.d("StageDebug", "Sleeping: " + pet.isSleeping());
+        Log.d("StageDebug", "Hunger: " + pet.getHunger() + ", Energy: " + pet.getEnergy() + ", Cleanliness: " + pet.getCleanliness());
+
+        // Check stage thresholds
+        if (age < 1) Log.d("StageDebug", "Should be: egg");
+        else if (age < 3) Log.d("StageDebug", "Should be: baby");
+        else if (age < 7) Log.d("StageDebug", "Should be: teen");
+        else Log.d("StageDebug", "Should be: adult");
+    }
+
     private void loadPet() {
         try {
             pet = petPreferences.loadPet();
@@ -109,11 +211,11 @@ public class MainActivity extends AppCompatActivity {
                 double energyLoss = minutesPassed * 0.05;
                 double cleanlinessLoss = minutesPassed * 0.02;
 
-                // FIXED: Calculate age based on days passed (1440 minutes = 1 day)
+                // Calculate age based on days passed (1440 minutes = 1 day)
                 double daysPassed = minutesPassed / 1440.0;
                 double previousAge = pet.getAge();
 
-                // FIXED: Add full days passed to age
+                // Add full days passed to age - this will auto-update stage
                 pet.setAge(pet.getAge() + daysPassed);
 
                 // Check for milestone achievements
@@ -135,7 +237,6 @@ public class MainActivity extends AppCompatActivity {
                 pet.setEnergy(Math.max(0, pet.getEnergy() - energyLoss));
                 pet.setCleanliness(Math.max(0, pet.getCleanliness() - cleanlinessLoss));
 
-                pet.updateStage();
                 pet.checkDeath();
                 pet.setLastUpdate(System.currentTimeMillis());
                 petPreferences.savePet(pet);
@@ -161,7 +262,7 @@ public class MainActivity extends AppCompatActivity {
             long currentTimePassed = System.currentTimeMillis() - pet.getLastUpdate();
             long currentMinutesPassed = currentTimePassed / (1000 * 60);
             double currentDaysPassed = currentMinutesPassed / 1440.0;
-            Log.d("AgeDebug", "Minutes passed: " + currentMinutesPassed + ", Days passed: " + currentDaysPassed + ", Current age: " + pet.getAge());
+            Log.d("AgeDebug", "Minutes passed: " + currentMinutesPassed + ", Days passed: " + currentDaysPassed + ", Current age: " + pet.getAge() + ", Stage: " + pet.getStage());
 
         } catch (Exception e) {
             // If anything fails, create a fresh pet
@@ -229,10 +330,23 @@ public class MainActivity extends AppCompatActivity {
         // TEMPORARY: Debug button to force age progression
         resetButton.setOnLongClickListener(v -> {
             // Long press reset button to debug age
+            double previousAge = pet.getAge();
             pet.setAge(pet.getAge() + 1.0);
-            pet.updateStage();
+            checkMilestones(previousAge, pet.getAge());
             saveAndUpdate();
-            showMessage("Debug: Age increased to " + (int)pet.getAge());
+            showMessage("Debug: Age increased to " + (int)pet.getAge() + ", Stage: " + pet.getStage());
+            Log.d("StageDebug", "Manual age increase - Age: " + pet.getAge() + ", Stage: " + pet.getStage());
+            return true;
+        });
+
+        // TEMPORARY: Debug button to check current stage
+        feedButton.setOnLongClickListener(v -> {
+            // Long press feed button to check stage info
+            debugStageInfo();
+            String debugInfo = "Age: " + pet.getAge() + ", Stage: " + pet.getStage() +
+                    ", Hunger: " + pet.getHunger() + ", Alive: " + pet.isAlive();
+            showMessage("Debug: " + debugInfo);
+            Log.d("StageDebug", debugInfo);
             return true;
         });
     }
@@ -467,49 +581,72 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // Updated pet image method with mood support
     private void updatePetImage() {
         try {
+            debugStageInfo();
+
             int drawableId = R.drawable.ic_pet_egg;
-            PetMood currentMood = determinePetMood();
+            String stage = pet.getStage();
 
-            // EGG STAGE: Always show egg, ignore moods
-            if ("egg".equals(pet.getStage())) {
+            Log.d("StageDebug", "Age: " + pet.getAge() + ", Stage: " + stage);
+
+            // First set base image by life stage
+            if ("baby".equals(stage)) {
+                drawableId = R.drawable.ic_pet_baby;
+                Log.d("DrawableDebug", "Setting base image: BABY");
+            } else if ("teen".equals(stage)) {
+                drawableId = R.drawable.ic_pet_teen;
+                Log.d("DrawableDebug", "Setting base image: TEEN");
+            } else if ("adult".equals(stage)) {
+                drawableId = R.drawable.ic_pet_adult;
+                Log.d("DrawableDebug", "Setting base image: ADULT");
+            } else {
                 drawableId = R.drawable.ic_pet_egg;
+                Log.d("DrawableDebug", "Setting base image: EGG");
             }
-            // OTHER STAGES: Use life stage as base, override with moods when appropriate
-            else {
-                // First determine the base image based on life stage
-                if ("baby".equals(pet.getStage())) {
-                    drawableId = R.drawable.ic_pet_baby;
-                } else if ("teen".equals(pet.getStage())) {
-                    drawableId = R.drawable.ic_pet_teen;
-                } else if ("adult".equals(pet.getStage())) {
-                    drawableId = R.drawable.ic_pet_adult;
-                }
 
-                // Override with mood-specific images if available (but not for egg stage)
-                switch (currentMood) {
+            // APPLY MOOD OVERRIDES (if not egg)
+            if (!"egg".equals(stage) && pet.isAlive() && !pet.isSleeping()) {
+                PetMood mood = determinePetMood();
+                Log.d("MoodDebug", "Current mood: " + mood);
+
+                switch (mood) {
                     case HAPPY:
                         drawableId = R.drawable.ic_pet_happy;
+                        Log.d("DrawableDebug", "Override: HAPPY mood");
                         break;
                     case HUNGRY:
                         drawableId = R.drawable.ic_pet_hungry;
+                        Log.d("DrawableDebug", "Override: HUNGRY mood");
                         break;
                     case TIRED:
-                    case SLEEPING:
                         drawableId = R.drawable.ic_pet_tired;
+                        Log.d("DrawableDebug", "Override: TIRED mood");
                         break;
                     case DIRTY:
                         drawableId = R.drawable.ic_pet_dirty;
+                        Log.d("DrawableDebug", "Override: DIRTY mood");
                         break;
-                    case DEFAULT:
-                        // Use the life stage image we already set
+                    default:
+                        // Keep the base life stage image
+                        Log.d("DrawableDebug", "No mood override, using life stage image");
                         break;
                 }
             }
 
+            // Special case for sleeping - use tired image
+            if (pet.isSleeping() && !"egg".equals(stage)) {
+                drawableId = R.drawable.ic_pet_tired;
+                Log.d("DrawableDebug", "Pet is sleeping - using TIRED image");
+            }
+
+            // Set the final image
+            Log.d("DrawableDebug", "Final drawable ID: " + drawableId);
             petImage.setImageResource(drawableId);
+
+            // Make sure ImageView is properly configured
+            petImage.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+            petImage.setAdjustViewBounds(true);
 
             // Apply visual effects
             if (!pet.isAlive()) {
@@ -522,17 +659,21 @@ public class MainActivity extends AppCompatActivity {
             }
 
             // Update mood message
+            PetMood currentMood = determinePetMood();
             updateMoodMessage(currentMood);
+
         } catch (Exception e) {
-            // If anything fails, fall back to basic egg
+            Log.e("StageDebug", "Error in updatePetImage: " + e.getMessage());
+            e.printStackTrace();
             try {
+                // Ultimate fallback
                 petImage.setImageResource(R.drawable.ic_pet_egg);
+                petImage.setAlpha(1.0f);
             } catch (Exception ex) {
-                // Last resort - do nothing
+                Log.e("StageDebug", "Even egg fallback failed: " + ex.getMessage());
             }
         }
     }
-
     // Updated mood message method
     private void updateMoodMessage(PetMood mood) {
         try {
@@ -643,12 +784,11 @@ public class MainActivity extends AppCompatActivity {
                         pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.02));
                     }
 
-                    // FIXED: Real-time age progression (1 second = 1/86400 of a day)
+                    // Real-time age progression (1 second = 1/86400 of a day)
                     // 86400 seconds in a day (24 hours * 60 minutes * 60 seconds)
                     pet.setAge(pet.getAge() + (1.0 / 86400.0));
 
                     checkMilestones(previousAge, pet.getAge());
-                    pet.updateStage();
                     pet.checkDeath();
                     saveAndUpdate();
                 }
