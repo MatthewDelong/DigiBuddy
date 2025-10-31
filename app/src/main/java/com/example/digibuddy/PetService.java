@@ -204,6 +204,13 @@ public class PetService extends Service {
         long currentTime = System.currentTimeMillis();
         long fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
 
+        // NEW: Don't send energy alerts when pet is sleeping
+        if (pet.isSleeping()) {
+            // Reset energy alerts since pet is already resting
+            alertSentMap.put("energy_warning", false);
+            alertSentMap.put("energy_emergency", false);
+        }
+
         // WARNING ALERTS - 25% threshold
         if (pet.getHunger() <= 25 && pet.getHunger() > 15) {
             if (!alertSentMap.get("hunger_warning") ||
@@ -228,7 +235,8 @@ public class PetService extends Service {
             alertSentMap.put("happiness_warning", false);
         }
 
-        if (pet.getEnergy() <= 25 && pet.getEnergy() > 15) {
+        // UPDATED: Energy warning - only send if NOT sleeping
+        if (pet.getEnergy() <= 25 && pet.getEnergy() > 15 && !pet.isSleeping()) {
             if (!alertSentMap.get("energy_warning") ||
                     (currentTime - lastAlertTimeMap.get("energy_warning") > fiveMinutes)) {
                 sendAlertNotification("Energy Warning", "Your DigiBuddy is getting tired! Maybe some rest soon?");
@@ -273,7 +281,8 @@ public class PetService extends Service {
             alertSentMap.put("happiness_emergency", false);
         }
 
-        if (pet.getEnergy() <= 15 && pet.getEnergy() > 0) {
+        // UPDATED: Energy emergency - only send if NOT sleeping
+        if (pet.getEnergy() <= 15 && pet.getEnergy() > 0 && !pet.isSleeping()) {
             if (!alertSentMap.get("energy_emergency") ||
                     (currentTime - lastAlertTimeMap.get("energy_emergency") > fiveMinutes)) {
                 sendAlertNotification("😴 ENERGY EMERGENCY!", "Your DigiBuddy is exhausted! Let it sleep immediately!");
