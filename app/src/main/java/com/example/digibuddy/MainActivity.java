@@ -206,29 +206,25 @@ public class MainActivity extends AppCompatActivity {
             // 2. Pet is alive AND
             // 3. This is NOT a fresh pet
             if (minutesPassed > 1 && pet.isAlive() && !isFreshPet) {
-                double hungerLoss = minutesPassed * 0.02; // Changed from 0.1 to 0.02
-                double happinessLoss = minutesPassed * 0.01; // Changed from 0.05 to 0.01
-                double energyLoss = minutesPassed * 0.01; // Changed from 0.05 to 0.01
-                double cleanlinessLoss = minutesPassed * 0.004; // Changed from 0.02 to 0.004
+                // UPDATED: Balanced degradation rates (per minute)
+                double hungerLoss = minutesPassed * 0.08;      // Balanced hunger rate
+                double happinessLoss = minutesPassed * 0.04;   // Balanced happiness
+                double energyLoss = minutesPassed * 0.04;      // Balanced energy
+                double cleanlinessLoss = minutesPassed * 0.016; // Balanced cleanliness
 
                 // Calculate age based on days passed (1440 minutes = 1 day)
                 double daysPassed = minutesPassed / 1440.0;
                 double previousAge = pet.getAge();
-
-                // Add full days passed to age - this will auto-update stage
                 pet.setAge(pet.getAge() + daysPassed);
-
-                // Check for milestone achievements
-                checkMilestones(previousAge, pet.getAge());
 
                 // If sleeping, apply sleep benefits
                 if (pet.isSleeping()) {
-                    // While sleeping: energy restores, hunger decreases slower
-                    double energyGain = minutesPassed * 0.06; // Changed from 0.3 to 0.06
+                    // UPDATED: Balanced sleeping rates (per minute)
+                    double energyGain = minutesPassed * 0.24;  // Reasonable energy restoration
                     pet.setEnergy(Math.min(100, pet.getEnergy() + energyGain));
-                    hungerLoss *= 0.3; // This now applies to the slower base rate
-                    happinessLoss *= 0.4;
-                    cleanlinessLoss *= 0.5;
+                    hungerLoss *= 0.3;      // 70% slower (0.08 × 0.3 = 0.024)
+                    happinessLoss *= 0.4;   // 60% slower (0.04 × 0.4 = 0.016)
+                    cleanlinessLoss *= 0.5; // 50% slower (0.016 × 0.5 = 0.008)
                     energyLoss = 0;
                 }
 
@@ -773,15 +769,17 @@ public class MainActivity extends AppCompatActivity {
                     double previousAge = pet.getAge();
 
                     if (pet.isSleeping()) {
-                        pet.setEnergy(Math.min(100, pet.getEnergy() + 0.06));
-                        pet.setHunger(Math.max(0, pet.getHunger() - 0.006));
-                        pet.setHappiness(Math.max(0, pet.getHappiness() - 0.004));
-                        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.002));
+                        // UPDATED: Balanced real-time sleeping rates (per second)
+                        pet.setEnergy(Math.min(100, pet.getEnergy() + 0.004));  // 0.24 per minute ÷ 60
+                        pet.setHunger(Math.max(0, pet.getHunger() - 0.0004));   // 0.024 per minute ÷ 60
+                        pet.setHappiness(Math.max(0, pet.getHappiness() - 0.00027)); // 0.016 per minute ÷ 60
+                        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.00013)); // 0.008 per minute ÷ 60
                     } else {
-                        pet.setHunger(Math.max(0, pet.getHunger() - 0.02));
-                        pet.setHappiness(Math.max(0, pet.getHappiness() - 0.01));
-                        pet.setEnergy(Math.max(0, pet.getEnergy() - 0.01));
-                        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.004));
+                        // UPDATED: Balanced real-time awake rates (per second)
+                        pet.setHunger(Math.max(0, pet.getHunger() - 0.00133));   // 0.08 per minute ÷ 60
+                        pet.setHappiness(Math.max(0, pet.getHappiness() - 0.00067)); // 0.04 per minute ÷ 60
+                        pet.setEnergy(Math.max(0, pet.getEnergy() - 0.00067));   // 0.04 per minute ÷ 60
+                        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.00027)); // 0.016 per minute ÷ 60
                     }
 
                     pet.setAge(pet.getAge() + 0.00001157);

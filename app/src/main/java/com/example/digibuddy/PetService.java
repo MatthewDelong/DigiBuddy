@@ -154,26 +154,25 @@ public class PetService extends Service {
             long minutesPassed = timePassed / (1000 * 60);
 
             if (minutesPassed > 0) {
-                // CORRECTED: Per-minute rates that match MainActivity's per-second rates
-                double hungerLoss = minutesPassed * 1.2;      // 0.02 per second × 60 = 1.2 per minute
-                double happinessLoss = minutesPassed * 0.6;   // 0.01 per second × 60 = 0.6 per minute
-                double energyLoss = minutesPassed * 0.6;      // 0.01 per second × 60 = 0.6 per minute
-                double cleanlinessLoss = minutesPassed * 0.24; // 0.004 per second × 60 = 0.24 per minute
+                // BALANCED RATES (per minute)
+                double hungerLoss = minutesPassed * 0.08;      // More reasonable hunger rate
+                double happinessLoss = minutesPassed * 0.04;   // Balanced happiness
+                double energyLoss = minutesPassed * 0.04;      // Balanced energy
+                double cleanlinessLoss = minutesPassed * 0.016; // Balanced cleanliness
 
                 // Calculate age based on days passed (1440 minutes = 1 day)
                 double daysPassed = minutesPassed / 1440.0;
                 double previousAge = pet.getAge();
 
-                // Add full days passed to age
                 pet.setAge(pet.getAge() + daysPassed);
 
                 if (pet.isSleeping()) {
-                    // CORRECTED: Per-minute rates that match MainActivity's per-second rates
-                    double energyGain = minutesPassed * 3.6;  // 0.06 per second × 60 = 3.6 per minute
+                    // BALANCED SLEEPING RATES (per minute)
+                    double energyGain = minutesPassed * 0.24;  // Reasonable energy restoration
                     pet.setEnergy(Math.min(100, pet.getEnergy() + energyGain));
-                    hungerLoss *= 0.3;      // 70% slower (same ratio as MainActivity)
-                    happinessLoss *= 0.4;   // 60% slower (same ratio as MainActivity)
-                    cleanlinessLoss *= 0.5; // 50% slower (same ratio as MainActivity)
+                    hungerLoss *= 0.3;      // 70% slower than awake (0.08 × 0.3 = 0.024)
+                    happinessLoss *= 0.4;   // 60% slower than awake (0.04 × 0.4 = 0.016)
+                    cleanlinessLoss *= 0.5; // 50% slower than awake (0.016 × 0.5 = 0.008)
                     energyLoss = 0;
                 }
 
