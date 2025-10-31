@@ -2,6 +2,7 @@ package com.example.digibuddy;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 
 public class PetPreferences {
     private static final String PREFS_NAME = "DigiBuddyPrefs";
@@ -16,6 +17,7 @@ public class PetPreferences {
     private static final String KEY_ALIVE = "alive";
     private static final String KEY_CLEANLINESS = "cleanliness";
     private static final String KEY_LAST_UPDATE = "last_update";
+    private static final String KEY_MILESTONES = "milestones";
 
     public PetPreferences(Context context) {
         sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -32,7 +34,10 @@ public class PetPreferences {
         editor.putBoolean(KEY_ALIVE, pet.isAlive());
         editor.putFloat(KEY_CLEANLINESS, (float) pet.getCleanliness());
         editor.putLong(KEY_LAST_UPDATE, pet.getLastUpdate());
-        editor.apply();
+        editor.putInt(KEY_MILESTONES, pet.getMilestonesAchieved());
+        editor.apply(); // Use apply() for immediate async write
+
+        Log.d("PetPreferences", "Pet saved - Sleeping: " + pet.isSleeping() + ", Energy: " + pet.getEnergy());
     }
 
     public Pet loadPet() {
@@ -41,6 +46,7 @@ public class PetPreferences {
             Pet freshPet = new Pet();
             // Reset lastUpdate to current time for fresh installs
             freshPet.setLastUpdate(System.currentTimeMillis());
+            Log.d("PetPreferences", "Fresh pet created");
             return freshPet;
         }
 
@@ -54,7 +60,9 @@ public class PetPreferences {
         pet.setAlive(sharedPreferences.getBoolean(KEY_ALIVE, true));
         pet.setCleanliness(sharedPreferences.getFloat(KEY_CLEANLINESS, 100));
         pet.setLastUpdate(sharedPreferences.getLong(KEY_LAST_UPDATE, System.currentTimeMillis()));
+        pet.setMilestonesAchieved(sharedPreferences.getInt(KEY_MILESTONES, 0));
 
+        Log.d("PetPreferences", "Pet loaded - Sleeping: " + pet.isSleeping() + ", Energy: " + pet.getEnergy());
         return pet;
     }
 
@@ -62,5 +70,16 @@ public class PetPreferences {
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.clear();
         editor.apply();
+        Log.d("PetPreferences", "Pet data reset");
+    }
+
+    // NEW: Immediate sleep state save for notification synchronization
+    public void saveSleepStateImmediately(boolean isSleeping) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(KEY_SLEEPING, isSleeping);
+        editor.putLong(KEY_LAST_UPDATE, System.currentTimeMillis());
+        editor.apply(); // Immediate async save
+
+        Log.d("PetPreferences", "Sleep state immediately saved: " + isSleeping);
     }
 }

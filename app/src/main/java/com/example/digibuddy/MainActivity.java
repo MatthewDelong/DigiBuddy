@@ -1,6 +1,8 @@
 package com.example.digibuddy;
 
 import android.app.AlertDialog;
+import android.app.NotificationManager;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -30,6 +32,10 @@ public class MainActivity extends AppCompatActivity {
     private final Handler uiHandler = new Handler();
     private Runnable uiUpdateRunnable;
 
+    // NEW: Notification constants
+    private static final int ENERGY_WARNING_ID = 1001;
+    private static final int ENERGY_EMERGENCY_ID = 1002;
+
     // Mood enum
     enum PetMood {
         HAPPY, HUNGRY, TIRED, DIRTY, SLEEPING, DEFAULT
@@ -41,8 +47,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         initializeViews();
-        checkAvailableDrawables(); // Check what drawables we have
-        checkDrawableProperties(); // Check drawable sizes and properties
+        checkAvailableDrawables();
+        checkDrawableProperties();
         petPreferences = new PetPreferences(this);
 
         try {
@@ -56,6 +62,9 @@ public class MainActivity extends AppCompatActivity {
         setupButtons();
         startUIUpdates();
         requestNotificationPermission();
+
+        // NEW: Initial notification cleanup
+        cleanupAllEnergyNotifications();
     }
 
     private void initializeViews() {
@@ -207,10 +216,10 @@ public class MainActivity extends AppCompatActivity {
             // 3. This is NOT a fresh pet
             if (minutesPassed > 1 && pet.isAlive() && !isFreshPet) {
                 // UPDATED: Balanced degradation rates (per minute)
-                double hungerLoss = minutesPassed * 0.08;      // Balanced hunger rate
-                double happinessLoss = minutesPassed * 0.04;   // Balanced happiness
-                double energyLoss = minutesPassed * 0.04;      // Balanced energy
-                double cleanlinessLoss = minutesPassed * 0.016; // Balanced cleanliness
+                double hungerLoss = minutesPassed * 0.08;
+                double happinessLoss = minutesPassed * 0.04;
+                double energyLoss = minutesPassed * 0.04;
+                double cleanlinessLoss = minutesPassed * 0.016;
 
                 // Calculate age based on days passed (1440 minutes = 1 day)
                 double daysPassed = minutesPassed / 1440.0;
@@ -220,11 +229,11 @@ public class MainActivity extends AppCompatActivity {
                 // If sleeping, apply sleep benefits
                 if (pet.isSleeping()) {
                     // UPDATED: Balanced sleeping rates (per minute)
-                    double energyGain = minutesPassed * 0.24;  // Reasonable energy restoration
+                    double energyGain = minutesPassed * 0.24;
                     pet.setEnergy(Math.min(100, pet.getEnergy() + energyGain));
-                    hungerLoss *= 0.3;      // 70% slower (0.08 × 0.3 = 0.024)
-                    happinessLoss *= 0.4;   // 60% slower (0.04 × 0.4 = 0.016)
-                    cleanlinessLoss *= 0.5; // 50% slower (0.016 × 0.5 = 0.008)
+                    hungerLoss *= 0.3;
+                    happinessLoss *= 0.4;
+                    cleanlinessLoss *= 0.5;
                     energyLoss = 0;
                 }
 
@@ -298,7 +307,7 @@ public class MainActivity extends AppCompatActivity {
                     starInfoText.setText("🌟 " + totalStars + " milestones");
                 }
             } else {
-                starInfoText.setText(""); // No text when no stars
+                starInfoText.setText("");
             }
 
             // Add larger, more visible stars
@@ -388,26 +397,153 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // NEW: Enhanced service management with notification control
     private void startPetService() {
         try {
-            android.content.Intent serviceIntent = new android.content.Intent(this, PetService.class);
+            Intent serviceIntent = new Intent(this, PetService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(serviceIntent);
             } else {
                 startService(serviceIntent);
             }
+            Log.d("PetService", "Pet service started");
         } catch (Exception e) {
-            // Ignore service start errors
+            Log.e("PetService", "Error starting pet service: " + e.getMessage());
         }
     }
 
     private void stopPetService() {
         try {
-            android.content.Intent serviceIntent = new android.content.Intent(this, PetService.class);
+            Intent serviceIntent = new Intent(this, PetService.class);
             stopService(serviceIntent);
+            Log.d("PetService", "Pet service stopped");
         } catch (Exception e) {
-            // Ignore service stop errors
+            Log.e("PetService", "Error stopping pet service: " + e.getMessage());
         }
+    }
+
+    // NEW: Enhanced sleep toggle with guaranteed notification cleanup
+    private void toggleSleep() {
+        if (!pet.isAlive()) {
+            showMessage("Your DigiBuddy has passed away...");
+            return;
+        }
+
+        boolean wasSleeping = pet.isSleeping();
+        pet.setSleeping(!pet.isSleeping());
+
+        // NEW: Immediate sleep state save for service synchronization
+        petPreferences.saveSleepStateImmediately(pet.isSleeping());
+
+        saveAndUpdate();
+        updateSleepButtonText();
+
+        // NEW: Force immediate notification cleanup with multiple strategies
+        if (pet.isSleeping()) {
+            // Pet is going to sleep - CLEAN UP ALL ENERGY NOTIFICATIONS
+            forceImmediateEnergyNotificationCleanup();
+            showMessage("Your DigiBuddy is now sleeping. Zzz...");
+        } else {
+            // Pet is waking up
+            showMessage("Your DigiBuddy woke up!");
+        }
+
+        Log.d("SleepToggle", "Sleep state changed from " + wasSleeping + " to " + pet.isSleeping());
+    }
+
+    // NEW: Comprehensive energy notification cleanup
+    private void forceImmediateEnergyNotificationCleanup() {
+        Log.d("NotificationFix", "Starting comprehensive energy notification cleanup");
+
+        // Strategy 1: Cancel notifications locally
+        cancelLocalEnergyNotifications();
+
+        // Strategy 2: Force service synchronization
+        forceServiceSleepSync();
+
+        // Strategy 3: Direct service communication
+        sendImmediateCleanupToService();
+
+        // Strategy 4: Nuclear option as fallback
+        new Handler().postDelayed(this::nuclearNotificationCleanup, 1000);
+    }
+
+    // NEW: Cancel notifications locally
+    private void cancelLocalEnergyNotifications() {
+        try {
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            nm.cancel(ENERGY_WARNING_ID);
+            nm.cancel(ENERGY_EMERGENCY_ID);
+            Log.d("NotificationFix", "Local energy notifications cancelled");
+        } catch (Exception e) {
+            Log.e("NotificationFix", "Error cancelling local notifications: " + e.getMessage());
+        }
+    }
+
+    // NEW: Enhanced service synchronization
+    private void forceServiceSleepSync() {
+        try {
+            // Stop service completely
+            stopPetService();
+
+            // Wait for service to stop
+            new Handler().postDelayed(() -> {
+                // Restart service with fresh state
+                startPetService();
+
+                // Send immediate cleanup command
+                sendImmediateCleanupToService();
+
+            }, 500);
+
+        } catch (Exception e) {
+            Log.e("SleepSync", "Error in forceServiceSleepSync: " + e.getMessage());
+        }
+    }
+
+    // NEW: Direct service communication
+    private void sendImmediateCleanupToService() {
+        try {
+            Intent cleanupIntent = new Intent(this, PetService.class);
+            cleanupIntent.setAction("CLEANUP_ENERGY_NOTIFICATIONS");
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(cleanupIntent);
+            } else {
+                startService(cleanupIntent);
+            }
+
+            Log.d("NotificationFix", "Immediate cleanup sent to service");
+        } catch (Exception e) {
+            Log.e("NotificationFix", "Error sending cleanup to service: " + e.getMessage());
+        }
+    }
+
+    // NEW: Nuclear option - complete notification reset
+    private void nuclearNotificationCleanup() {
+        try {
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            nm.cancelAll(); // Cancel ALL notifications from our app
+
+            // Additional cleanup for any persistent notifications
+            new Handler().postDelayed(() -> {
+                nm.cancel(ENERGY_WARNING_ID);
+                nm.cancel(ENERGY_EMERGENCY_ID);
+            }, 200);
+
+            Log.d("NuclearCleanup", "Nuclear notification cleanup executed");
+        } catch (Exception e) {
+            Log.e("NuclearCleanup", "Nuclear cleanup failed: " + e.getMessage());
+        }
+    }
+
+    // NEW: Cleanup all energy notifications on startup
+    private void cleanupAllEnergyNotifications() {
+        new Handler().postDelayed(() -> {
+            if (pet != null && pet.isSleeping()) {
+                forceImmediateEnergyNotificationCleanup();
+            }
+        }, 2000);
     }
 
     private void feedPet() {
@@ -452,31 +588,6 @@ public class MainActivity extends AppCompatActivity {
         showMessage("Your DigiBuddy had fun playing!");
     }
 
-    private void toggleSleep() {
-        if (!pet.isAlive()) {
-            showMessage("Your DigiBuddy has passed away...");
-            return;
-        }
-
-        pet.setSleeping(!pet.isSleeping());
-        saveAndUpdate();
-        updateSleepButtonText();
-
-        if (pet.isSleeping()) {
-            showMessage("Your DigiBuddy is now sleeping. Zzz...");
-        } else {
-            showMessage("Your DigiBuddy woke up!");
-        }
-    }
-
-    private void updateSleepButtonText() {
-        if (pet.isSleeping()) {
-            sleepButton.setText("⏰ WAKE");
-        } else {
-            sleepButton.setText("😴 SLEEP");
-        }
-    }
-
     private void cleanPet() {
         if (!pet.isAlive()) {
             showMessage("Your DigiBuddy has passed away...");
@@ -506,6 +617,8 @@ public class MainActivity extends AppCompatActivity {
                     showMessage("A new DigiBuddy has arrived! Take good care of it.");
                     stopPetService();
                     startPetService();
+                    // NEW: Cleanup notifications on reset
+                    cleanupAllEnergyNotifications();
                 })
                 .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
                 .show();
@@ -573,7 +686,7 @@ public class MainActivity extends AppCompatActivity {
 
             return PetMood.DEFAULT;
         } catch (Exception e) {
-            return PetMood.DEFAULT; // Safe fallback
+            return PetMood.DEFAULT;
         }
     }
 
@@ -624,7 +737,6 @@ public class MainActivity extends AppCompatActivity {
                         Log.d("DrawableDebug", "Override: DIRTY mood");
                         break;
                     default:
-                        // Keep the base life stage image
                         Log.d("DrawableDebug", "No mood override, using life stage image");
                         break;
                 }
@@ -662,7 +774,6 @@ public class MainActivity extends AppCompatActivity {
             Log.e("StageDebug", "Error in updatePetImage: " + e.getMessage());
             e.printStackTrace();
             try {
-                // Ultimate fallback
                 petImage.setImageResource(R.drawable.ic_pet_egg);
                 petImage.setAlpha(1.0f);
             } catch (Exception ex) {
@@ -670,6 +781,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
     // Updated mood message method
     private void updateMoodMessage(PetMood mood) {
         try {
@@ -697,7 +809,6 @@ public class MainActivity extends AppCompatActivity {
                         message = "I feel dirty and uncomfortable... Can you clean me? 🛁";
                         break;
                     default:
-                        // Default messages based on general state
                         if (pet.getHappiness() > 70) {
                             message = "I'm having a great day! Thanks for being awesome!";
                         } else if (pet.getEnergy() > 80) {
@@ -761,6 +872,14 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void updateSleepButtonText() {
+        if (pet.isSleeping()) {
+            sleepButton.setText("⏰ WAKE");
+        } else {
+            sleepButton.setText("😴 SLEEP");
+        }
+    }
+
     private void startUIUpdates() {
         uiUpdateRunnable = new Runnable() {
             @Override
@@ -769,17 +888,15 @@ public class MainActivity extends AppCompatActivity {
                     double previousAge = pet.getAge();
 
                     if (pet.isSleeping()) {
-                        // UPDATED: Balanced real-time sleeping rates (per second)
-                        pet.setEnergy(Math.min(100, pet.getEnergy() + 0.004));  // 0.24 per minute ÷ 60
-                        pet.setHunger(Math.max(0, pet.getHunger() - 0.0004));   // 0.024 per minute ÷ 60
-                        pet.setHappiness(Math.max(0, pet.getHappiness() - 0.00027)); // 0.016 per minute ÷ 60
-                        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.00013)); // 0.008 per minute ÷ 60
+                        pet.setEnergy(Math.min(100, pet.getEnergy() + 0.004));
+                        pet.setHunger(Math.max(0, pet.getHunger() - 0.0004));
+                        pet.setHappiness(Math.max(0, pet.getHappiness() - 0.00027));
+                        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.00013));
                     } else {
-                        // UPDATED: Balanced real-time awake rates (per second)
-                        pet.setHunger(Math.max(0, pet.getHunger() - 0.00133));   // 0.08 per minute ÷ 60
-                        pet.setHappiness(Math.max(0, pet.getHappiness() - 0.00067)); // 0.04 per minute ÷ 60
-                        pet.setEnergy(Math.max(0, pet.getEnergy() - 0.00067));   // 0.04 per minute ÷ 60
-                        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.00027)); // 0.016 per minute ÷ 60
+                        pet.setHunger(Math.max(0, pet.getHunger() - 0.00133));
+                        pet.setHappiness(Math.max(0, pet.getHappiness() - 0.00067));
+                        pet.setEnergy(Math.max(0, pet.getEnergy() - 0.00067));
+                        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 0.00027));
                     }
 
                     pet.setAge(pet.getAge() + 0.00001157);
@@ -798,6 +915,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         loadPet();
+        // NEW: Cleanup notifications when resuming
+        if (pet != null && pet.isSleeping()) {
+            cleanupAllEnergyNotifications();
+        }
     }
 
     @Override
