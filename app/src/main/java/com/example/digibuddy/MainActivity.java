@@ -35,6 +35,12 @@ public class MainActivity extends AppCompatActivity {
     // NEW: Notification constants
     private static final int ENERGY_WARNING_ID = 1001;
     private static final int ENERGY_EMERGENCY_ID = 1002;
+    private static final int HUNGER_WARNING_ID = 2001;
+    private static final int HUNGER_EMERGENCY_ID = 2002;
+    private static final int HAPPINESS_WARNING_ID = 3001;
+    private static final int HAPPINESS_EMERGENCY_ID = 3002;
+    private static final int CLEANLINESS_WARNING_ID = 4001;
+    private static final int CLEANLINESS_EMERGENCY_ID = 4002;
 
     // Mood enum
     enum PetMood {
@@ -64,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
         requestNotificationPermission();
 
         // NEW: Initial notification cleanup
-        cleanupAllEnergyNotifications();
+        cleanupAllNotifications();
     }
 
     private void initializeViews() {
@@ -441,7 +447,7 @@ public class MainActivity extends AppCompatActivity {
         // NEW: Force immediate notification cleanup with multiple strategies
         if (pet.isSleeping()) {
             // Pet is going to sleep - CLEAN UP ALL ENERGY NOTIFICATIONS
-            forceImmediateEnergyNotificationCleanup();
+            forceImmediateNotificationCleanup();
             showMessage("Your DigiBuddy is now sleeping. Zzz...");
         } else {
             // Pet is waking up
@@ -451,21 +457,127 @@ public class MainActivity extends AppCompatActivity {
         Log.d("SleepToggle", "Sleep state changed from " + wasSleeping + " to " + pet.isSleeping());
     }
 
-    // NEW: Comprehensive energy notification cleanup
-    private void forceImmediateEnergyNotificationCleanup() {
-        Log.d("NotificationFix", "Starting comprehensive energy notification cleanup");
+    // NEW: Enhanced feed method with immediate notification cleanup
+    private void feedPet() {
+        if (!pet.isAlive()) {
+            showMessage("Your DigiBuddy has passed away...");
+            return;
+        }
 
-        // Strategy 1: Cancel notifications locally
-        cancelLocalEnergyNotifications();
+        if (pet.isSleeping()) {
+            showMessage("Your DigiBuddy is sleeping! Wait for it to wake up.");
+            return;
+        }
 
-        // Strategy 2: Force service synchronization
+        double previousHunger = pet.getHunger();
+        pet.setHunger(Math.min(100, pet.getHunger() + 25));
+        pet.setHappiness(Math.min(100, pet.getHappiness() + 5));
+        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 5));
+        saveAndUpdate();
+
+        // NEW: Immediately cancel hunger notifications after feeding
+        if (previousHunger <= 25) {
+            sendCancelHungerAlertsToService();
+            cancelLocalHungerNotifications();
+        }
+
+        showMessage("Yum! Your DigiBuddy enjoyed the meal!");
+    }
+
+    // NEW: Enhanced action methods for comprehensive notification control
+    private void sendImmediateCleanupToService() {
+        try {
+            Intent cleanupIntent = new Intent(this, PetService.class);
+            cleanupIntent.setAction("CLEANUP_ENERGY_NOTIFICATIONS");
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(cleanupIntent);
+            } else {
+                startService(cleanupIntent);
+            }
+
+            Log.d("NotificationFix", "Immediate cleanup sent to service");
+        } catch (Exception e) {
+            Log.e("NotificationFix", "Error sending cleanup to service: " + e.getMessage());
+        }
+    }
+
+    private void sendCleanupAllToService() {
+        try {
+            Intent cleanupIntent = new Intent(this, PetService.class);
+            cleanupIntent.setAction("CLEANUP_ALL_NOTIFICATIONS");
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(cleanupIntent);
+            } else {
+                startService(cleanupIntent);
+            }
+
+            Log.d("NotificationFix", "Cleanup ALL sent to service");
+        } catch (Exception e) {
+            Log.e("NotificationFix", "Error sending cleanup all to service: " + e.getMessage());
+        }
+    }
+
+    private void sendCancelHungerAlertsToService() {
+        try {
+            Intent cancelIntent = new Intent(this, PetService.class);
+            cancelIntent.setAction("CANCEL_HUNGER_ALERTS");
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(cancelIntent);
+            } else {
+                startService(cancelIntent);
+            }
+
+            Log.d("NotificationFix", "Cancel hunger alerts sent to service");
+        } catch (Exception e) {
+            Log.e("NotificationFix", "Error sending cancel hunger to service: " + e.getMessage());
+        }
+    }
+
+    // NEW: Comprehensive notification cleanup
+    private void forceImmediateNotificationCleanup() {
+        Log.d("NotificationFix", "Starting comprehensive notification cleanup");
+
+        // Cancel all notifications locally
+        cancelLocalAllNotifications();
+
+        // Force service synchronization
         forceServiceSleepSync();
 
-        // Strategy 3: Direct service communication
-        sendImmediateCleanupToService();
+        // Send comprehensive cleanup to service
+        sendCleanupAllToService();
+    }
 
-        // Strategy 4: Nuclear option as fallback
-        new Handler().postDelayed(this::nuclearNotificationCleanup, 1000);
+    // NEW: Cancel local hunger notifications
+    private void cancelLocalHungerNotifications() {
+        try {
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            nm.cancel(HUNGER_WARNING_ID);
+            nm.cancel(HUNGER_EMERGENCY_ID);
+            Log.d("NotificationFix", "Local hunger notifications cancelled");
+        } catch (Exception e) {
+            Log.e("NotificationFix", "Error cancelling local hunger notifications: " + e.getMessage());
+        }
+    }
+
+    // NEW: Cancel all local notifications
+    private void cancelLocalAllNotifications() {
+        try {
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            nm.cancel(HUNGER_WARNING_ID);
+            nm.cancel(HUNGER_EMERGENCY_ID);
+            nm.cancel(ENERGY_WARNING_ID);
+            nm.cancel(ENERGY_EMERGENCY_ID);
+            nm.cancel(HAPPINESS_WARNING_ID);
+            nm.cancel(HAPPINESS_EMERGENCY_ID);
+            nm.cancel(CLEANLINESS_WARNING_ID);
+            nm.cancel(CLEANLINESS_EMERGENCY_ID);
+            Log.d("NotificationFix", "All local notifications cancelled");
+        } catch (Exception e) {
+            Log.e("NotificationFix", "Error cancelling all local notifications: " + e.getMessage());
+        }
     }
 
     // NEW: Cancel notifications locally
@@ -501,24 +613,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // NEW: Direct service communication
-    private void sendImmediateCleanupToService() {
-        try {
-            Intent cleanupIntent = new Intent(this, PetService.class);
-            cleanupIntent.setAction("CLEANUP_ENERGY_NOTIFICATIONS");
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(cleanupIntent);
-            } else {
-                startService(cleanupIntent);
-            }
-
-            Log.d("NotificationFix", "Immediate cleanup sent to service");
-        } catch (Exception e) {
-            Log.e("NotificationFix", "Error sending cleanup to service: " + e.getMessage());
-        }
-    }
-
     // NEW: Nuclear option - complete notification reset
     private void nuclearNotificationCleanup() {
         try {
@@ -537,31 +631,17 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // NEW: Cleanup all energy notifications on startup
-    private void cleanupAllEnergyNotifications() {
+    // NEW: Cleanup all notifications on startup
+    private void cleanupAllNotifications() {
         new Handler().postDelayed(() -> {
-            if (pet != null && pet.isSleeping()) {
-                forceImmediateEnergyNotificationCleanup();
+            if (pet != null) {
+                // Always validate notifications on startup
+                sendCleanupAllToService();
+                if (pet.isSleeping()) {
+                    forceImmediateNotificationCleanup();
+                }
             }
         }, 2000);
-    }
-
-    private void feedPet() {
-        if (!pet.isAlive()) {
-            showMessage("Your DigiBuddy has passed away...");
-            return;
-        }
-
-        if (pet.isSleeping()) {
-            showMessage("Your DigiBuddy is sleeping! Wait for it to wake up.");
-            return;
-        }
-
-        pet.setHunger(Math.min(100, pet.getHunger() + 25));
-        pet.setHappiness(Math.min(100, pet.getHappiness() + 5));
-        pet.setCleanliness(Math.max(0, pet.getCleanliness() - 5));
-        saveAndUpdate();
-        showMessage("Yum! Your DigiBuddy enjoyed the meal!");
     }
 
     private void playWithPet() {
@@ -618,7 +698,7 @@ public class MainActivity extends AppCompatActivity {
                     stopPetService();
                     startPetService();
                     // NEW: Cleanup notifications on reset
-                    cleanupAllEnergyNotifications();
+                    cleanupAllNotifications();
                 })
                 .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
                 .show();
@@ -916,8 +996,8 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         loadPet();
         // NEW: Cleanup notifications when resuming
-        if (pet != null && pet.isSleeping()) {
-            cleanupAllEnergyNotifications();
+        if (pet != null) {
+            cleanupAllNotifications();
         }
     }
 

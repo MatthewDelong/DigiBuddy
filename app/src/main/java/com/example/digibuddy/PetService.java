@@ -22,7 +22,7 @@ public class PetService extends Service {
     private static final String CHANNEL_ID = "pet_service_channel";
     private static final String ALERT_CHANNEL_ID = "pet_alert_channel";
 
-    // NEW: Constants for notification IDs
+    // Constants for notification IDs
     private static final int ENERGY_WARNING_ID = 1001;
     private static final int ENERGY_EMERGENCY_ID = 1002;
     private static final int HUNGER_WARNING_ID = 2001;
@@ -38,11 +38,11 @@ public class PetService extends Service {
     private PetPreferences petPreferences;
     private NotificationManager notificationManager;
 
-    // NEW: Thread-safe alert tracking with atomic operations
+    // Thread-safe alert tracking with atomic operations
     private Map<String, AtomicBoolean> alertSentMap;
     private Map<String, Long> lastAlertTimeMap;
 
-    // NEW: Sleep state synchronization
+    // Sleep state synchronization
     private final AtomicBoolean isProcessingSleep = new AtomicBoolean(false);
 
     @Override
@@ -57,7 +57,7 @@ public class PetService extends Service {
         Log.d("PetService", "Service created with enhanced notification control");
     }
 
-    // NEW: Completely redesigned alert tracking
+    // Completely redesigned alert tracking
     private void initializeAlertTracking() {
         alertSentMap = new HashMap<>();
         lastAlertTimeMap = new HashMap<>();
@@ -99,6 +99,14 @@ public class PetService extends Service {
             } else if ("FORCE_SLEEP_SYNC".equals(action)) {
                 Log.d("PetService", "Force sleep synchronization requested");
                 forceSleepStateSync();
+                return START_STICKY;
+            } else if ("CLEANUP_ALL_NOTIFICATIONS".equals(action)) {
+                Log.d("PetService", "Cleanup ALL notifications requested");
+                cleanupAllNotificationsImmediately();
+                return START_STICKY;
+            } else if ("CANCEL_HUNGER_ALERTS".equals(action)) {
+                Log.d("PetService", "Cancel hunger alerts requested");
+                cancelHungerNotificationsImmediately();
                 return START_STICKY;
             }
         }
@@ -169,6 +177,7 @@ public class PetService extends Service {
 
         if (!pet.isAlive()) {
             Log.d("PetService", "Pet is not alive, stopping service");
+            cleanupAllNotificationsImmediately();
             stopSelf();
             return;
         }
@@ -220,7 +229,7 @@ public class PetService extends Service {
         }
     }
 
-    // NEW: Completely redesigned notification system
+    // NEW: Completely redesigned notification system with state validation
     private void checkLowStatsAndNotify() {
         if (isProcessingSleep.get()) {
             Log.d("PetService", "Sleep processing in progress, skipping notification check");
@@ -234,93 +243,138 @@ public class PetService extends Service {
             return;
         }
 
-        // NEW: Immediate sleep state handling - CRITICAL
-        if (pet.isSleeping()) {
-            handleSleepStateImmediately();
-            return; // Skip ALL notification checks when sleeping
-        }
+        // NEW: Immediate state validation - skip ALL notifications if conditions don't match
+        validateAndCleanupNotifications(pet);
 
         long currentTime = System.currentTimeMillis();
         long fiveMinutes = 5 * 60 * 1000;
 
-        // WARNING ALERTS - 25% threshold
-        checkAndSendWarningAlert(pet, "hunger", pet.getHunger(), 25, 15,
-                "Hunger Warning", "Your DigiBuddy is getting hungry! Consider feeding soon.",
-                HUNGER_WARNING_ID, currentTime, fiveMinutes);
+        // Check if we should skip ALL alerts (like when sleeping for energy)
+        boolean skipEnergyAlerts = pet.isSleeping();
 
-        checkAndSendWarningAlert(pet, "happiness", pet.getHappiness(), 25, 15,
-                "Happiness Warning", "Your DigiBuddy is feeling sad! Some playtime would help!",
-                HAPPINESS_WARNING_ID, currentTime, fiveMinutes);
+        if (!skipEnergyAlerts) {
+            // WARNING ALERTS - 25% threshold
+            checkAndSendStatAlert(pet, "hunger", pet.getHunger(), 25, 15,
+                    "Hunger Warning", "Your DigiBuddy is getting hungry! Consider feeding soon.",
+                    HUNGER_WARNING_ID, "hunger_warning", currentTime, fiveMinutes);
 
-        checkAndSendWarningAlert(pet, "energy", pet.getEnergy(), 25, 15,
-                "Energy Warning", "Your DigiBuddy is getting tired! Maybe some rest soon?",
-                ENERGY_WARNING_ID, currentTime, fiveMinutes);
+            checkAndSendStatAlert(pet, "happiness", pet.getHappiness(), 25, 15,
+                    "Happiness Warning", "Your DigiBuddy is feeling sad! Some playtime would help!",
+                    HAPPINESS_WARNING_ID, "happiness_warning", currentTime, fiveMinutes);
 
-        checkAndSendWarningAlert(pet, "cleanliness", pet.getCleanliness(), 25, 15,
-                "Cleanliness Warning", "Your DigiBuddy is getting dirty! A cleaning would be nice!",
-                CLEANLINESS_WARNING_ID, currentTime, fiveMinutes);
+            checkAndSendStatAlert(pet, "energy", pet.getEnergy(), 25, 15,
+                    "Energy Warning", "Your DigiBuddy is getting tired! Maybe some rest soon?",
+                    ENERGY_WARNING_ID, "energy_warning", currentTime, fiveMinutes);
 
-        // EMERGENCY ALERTS - 15% threshold
-        checkAndSendEmergencyAlert(pet, "hunger", pet.getHunger(), 15, 0,
-                "🍕 HUNGER EMERGENCY!", "Your DigiBuddy is very hungry! Feed it immediately!",
-                HUNGER_EMERGENCY_ID, currentTime, fiveMinutes);
+            checkAndSendStatAlert(pet, "cleanliness", pet.getCleanliness(), 25, 15,
+                    "Cleanliness Warning", "Your DigiBuddy is getting dirty! A cleaning would be nice!",
+                    CLEANLINESS_WARNING_ID, "cleanliness_warning", currentTime, fiveMinutes);
 
-        checkAndSendEmergencyAlert(pet, "happiness", pet.getHappiness(), 15, 0,
-                "😢 HAPPINESS EMERGENCY!", "Your DigiBuddy is very sad! Play with it urgently!",
-                HAPPINESS_EMERGENCY_ID, currentTime, fiveMinutes);
+            // EMERGENCY ALERTS - 15% threshold
+            checkAndSendStatAlert(pet, "hunger", pet.getHunger(), 15, 0,
+                    "🍕 HUNGER EMERGENCY!", "Your DigiBuddy is very hungry! Feed it immediately!",
+                    HUNGER_EMERGENCY_ID, "hunger_emergency", currentTime, fiveMinutes);
 
-        checkAndSendEmergencyAlert(pet, "energy", pet.getEnergy(), 15, 0,
-                "😴 ENERGY EMERGENCY!", "Your DigiBuddy is exhausted! Let it sleep immediately!",
-                ENERGY_EMERGENCY_ID, currentTime, fiveMinutes);
+            checkAndSendStatAlert(pet, "happiness", pet.getHappiness(), 15, 0,
+                    "😢 HAPPINESS EMERGENCY!", "Your DigiBuddy is very sad! Play with it urgently!",
+                    HAPPINESS_EMERGENCY_ID, "happiness_emergency", currentTime, fiveMinutes);
 
-        checkAndSendEmergencyAlert(pet, "cleanliness", pet.getCleanliness(), 15, 0,
-                "🛁 CLEANLINESS EMERGENCY!", "Your DigiBuddy is very dirty! Clean it right away!",
-                CLEANLINESS_EMERGENCY_ID, currentTime, fiveMinutes);
+            checkAndSendStatAlert(pet, "energy", pet.getEnergy(), 15, 0,
+                    "😴 ENERGY EMERGENCY!", "Your DigiBuddy is exhausted! Let it sleep immediately!",
+                    ENERGY_EMERGENCY_ID, "energy_emergency", currentTime, fiveMinutes);
+
+            checkAndSendStatAlert(pet, "cleanliness", pet.getCleanliness(), 15, 0,
+                    "🛁 CLEANLINESS EMERGENCY!", "Your DigiBuddy is very dirty! Clean it right away!",
+                    CLEANLINESS_EMERGENCY_ID, "cleanliness_emergency", currentTime, fiveMinutes);
+        } else {
+            // If sleeping, cancel any existing energy notifications
+            cancelEnergyNotificationsImmediately();
+        }
     }
 
-    // NEW: Modular alert checking methods
-    private void checkAndSendWarningAlert(Pet pet, String type, double value, int upperThreshold, int lowerThreshold,
-                                          String title, String message, int notificationId,
-                                          long currentTime, long cooldown) {
-        String alertKey = type + "_warning";
+    // NEW: Unified stat alert checking with automatic cleanup
+    private void checkAndSendStatAlert(Pet pet, String type, double value, int upperThreshold, int lowerThreshold,
+                                       String title, String message, int notificationId, String alertKey,
+                                       long currentTime, long cooldown) {
 
+        // Check if alert should be sent
         if (value <= upperThreshold && value > lowerThreshold) {
             if (!alertSentMap.get(alertKey).get() ||
                     (currentTime - lastAlertTimeMap.get(alertKey) > cooldown)) {
                 sendAlertNotification(title, message, notificationId);
                 alertSentMap.get(alertKey).set(true);
                 lastAlertTimeMap.put(alertKey, currentTime);
-                Log.d("PetService", "Sent " + alertKey + " notification");
+                Log.d("PetService", "Sent " + alertKey + " notification - Value: " + value);
             }
         } else {
-            // Reset alert state and cancel notification when condition no longer met
+            // NEW: If condition no longer met, immediately cancel notification and reset state
             if (alertSentMap.get(alertKey).get()) {
                 alertSentMap.get(alertKey).set(false);
                 notificationManager.cancel(notificationId);
-                Log.d("PetService", "Cancelled " + alertKey + " notification - condition no longer met");
+                Log.d("PetService", "Cancelled " + alertKey + " notification - Condition no longer met. Value: " + value);
             }
         }
     }
 
-    private void checkAndSendEmergencyAlert(Pet pet, String type, double value, int upperThreshold, int lowerThreshold,
-                                            String title, String message, int notificationId,
-                                            long currentTime, long cooldown) {
-        String alertKey = type + "_emergency";
+    // NEW: Validate all notifications and cleanup any that shouldn't be showing
+    private void validateAndCleanupNotifications(Pet pet) {
+        Log.d("PetService", "Validating notifications - Hunger: " + pet.getHunger() +
+                ", Energy: " + pet.getEnergy() + ", Sleeping: " + pet.isSleeping());
 
-        if (value <= upperThreshold && value > lowerThreshold) {
-            if (!alertSentMap.get(alertKey).get() ||
-                    (currentTime - lastAlertTimeMap.get(alertKey) > cooldown)) {
-                sendAlertNotification(title, message, notificationId);
-                alertSentMap.get(alertKey).set(true);
-                lastAlertTimeMap.put(alertKey, currentTime);
-                Log.d("PetService", "Sent " + alertKey + " notification");
+        // Check hunger notifications
+        if (pet.getHunger() > 25) {
+            // If hunger is above warning threshold, cancel both warning and emergency
+            if (alertSentMap.get("hunger_warning").get()) {
+                alertSentMap.get("hunger_warning").set(false);
+                notificationManager.cancel(HUNGER_WARNING_ID);
+                Log.d("PetService", "Cancelled hunger warning - Hunger level: " + pet.getHunger());
             }
-        } else {
-            // Reset alert state and cancel notification when condition no longer met
-            if (alertSentMap.get(alertKey).get()) {
-                alertSentMap.get(alertKey).set(false);
-                notificationManager.cancel(notificationId);
-                Log.d("PetService", "Cancelled " + alertKey + " notification - condition no longer met");
+            if (alertSentMap.get("hunger_emergency").get()) {
+                alertSentMap.get("hunger_emergency").set(false);
+                notificationManager.cancel(HUNGER_EMERGENCY_ID);
+                Log.d("PetService", "Cancelled hunger emergency - Hunger level: " + pet.getHunger());
+            }
+        } else if (pet.getHunger() > 15) {
+            // If hunger is between 15-25, only cancel emergency
+            if (alertSentMap.get("hunger_emergency").get()) {
+                alertSentMap.get("hunger_emergency").set(false);
+                notificationManager.cancel(HUNGER_EMERGENCY_ID);
+                Log.d("PetService", "Cancelled hunger emergency (now in warning range) - Hunger: " + pet.getHunger());
+            }
+        }
+
+        // Check energy notifications (respect sleep state)
+        if (pet.isSleeping() || pet.getEnergy() > 25) {
+            cancelEnergyNotificationsImmediately();
+        } else if (pet.getEnergy() > 15) {
+            // If energy is between 15-25, only cancel emergency
+            if (alertSentMap.get("energy_emergency").get()) {
+                alertSentMap.get("energy_emergency").set(false);
+                notificationManager.cancel(ENERGY_EMERGENCY_ID);
+                Log.d("PetService", "Cancelled energy emergency (now in warning range) - Energy: " + pet.getEnergy());
+            }
+        }
+
+        // Similar validation for happiness and cleanliness
+        if (pet.getHappiness() > 25) {
+            if (alertSentMap.get("happiness_warning").get()) {
+                alertSentMap.get("happiness_warning").set(false);
+                notificationManager.cancel(HAPPINESS_WARNING_ID);
+            }
+            if (alertSentMap.get("happiness_emergency").get()) {
+                alertSentMap.get("happiness_emergency").set(false);
+                notificationManager.cancel(HAPPINESS_EMERGENCY_ID);
+            }
+        }
+
+        if (pet.getCleanliness() > 25) {
+            if (alertSentMap.get("cleanliness_warning").get()) {
+                alertSentMap.get("cleanliness_warning").set(false);
+                notificationManager.cancel(CLEANLINESS_WARNING_ID);
+            }
+            if (alertSentMap.get("cleanliness_emergency").get()) {
+                alertSentMap.get("cleanliness_emergency").set(false);
+                notificationManager.cancel(CLEANLINESS_EMERGENCY_ID);
             }
         }
     }
@@ -355,6 +409,70 @@ public class PetService extends Service {
         Pet pet = petPreferences.loadPet();
         if (pet.isSleeping()) {
             handleSleepStateImmediately();
+        }
+    }
+
+    // NEW: Comprehensive notification cleanup methods
+    private void cleanupAllNotificationsImmediately() {
+        Log.d("PetService", "Executing comprehensive ALL notification cleanup");
+
+        // Cancel all specific notifications
+        cancelHungerNotificationsImmediately();
+        cancelEnergyNotificationsImmediately();
+        cancelHappinessNotificationsImmediately();
+        cancelCleanlinessNotificationsImmediately();
+
+        // Reset all alert states
+        for (AtomicBoolean sent : alertSentMap.values()) {
+            sent.set(false);
+        }
+
+        Log.d("PetService", "All notifications cleanup completed");
+    }
+
+    private void cancelHungerNotificationsImmediately() {
+        try {
+            notificationManager.cancel(HUNGER_WARNING_ID);
+            notificationManager.cancel(HUNGER_EMERGENCY_ID);
+            alertSentMap.get("hunger_warning").set(false);
+            alertSentMap.get("hunger_emergency").set(false);
+            Log.d("PetService", "Hunger notifications cancelled immediately");
+        } catch (Exception e) {
+            Log.e("PetService", "Error cancelling hunger notifications: " + e.getMessage());
+        }
+    }
+
+    private void cancelEnergyNotificationsImmediately() {
+        try {
+            notificationManager.cancel(ENERGY_WARNING_ID);
+            notificationManager.cancel(ENERGY_EMERGENCY_ID);
+            alertSentMap.get("energy_warning").set(false);
+            alertSentMap.get("energy_emergency").set(false);
+            Log.d("PetService", "Energy notifications cancelled immediately");
+        } catch (Exception e) {
+            Log.e("PetService", "Error cancelling energy notifications: " + e.getMessage());
+        }
+    }
+
+    private void cancelHappinessNotificationsImmediately() {
+        try {
+            notificationManager.cancel(HAPPINESS_WARNING_ID);
+            notificationManager.cancel(HAPPINESS_EMERGENCY_ID);
+            alertSentMap.get("happiness_warning").set(false);
+            alertSentMap.get("happiness_emergency").set(false);
+        } catch (Exception e) {
+            Log.e("PetService", "Error cancelling happiness notifications: " + e.getMessage());
+        }
+    }
+
+    private void cancelCleanlinessNotificationsImmediately() {
+        try {
+            notificationManager.cancel(CLEANLINESS_WARNING_ID);
+            notificationManager.cancel(CLEANLINESS_EMERGENCY_ID);
+            alertSentMap.get("cleanliness_warning").set(false);
+            alertSentMap.get("cleanliness_emergency").set(false);
+        } catch (Exception e) {
+            Log.e("PetService", "Error cancelling cleanliness notifications: " + e.getMessage());
         }
     }
 
