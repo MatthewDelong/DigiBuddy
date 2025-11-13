@@ -305,6 +305,14 @@
                     android:text="⚽ PLAY"
                     android:textSize="14sp"
                     android:backgroundTint="@color/purple_500" />
+
+                <Button
+                    android:id="@+id/debugButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📋 Logs"
+                    android:backgroundTint="@color/gray"
+                    android:layout_margin="8dp" />
             </LinearLayout>
 
             <!-- Second row of buttons -->
